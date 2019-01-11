@@ -1,0 +1,38 @@
+{
+  "name": "iobroker.wmbus",
+  "version": "0.1.0",
+  "description": "wMBus Adapter",
+  "author": {
+    "name": "Christian Landvogt",
+    "email": "landvogt@isfh.de"
+  },
+  "contributors": [],
+  "homepage": "",
+  "license": "MIT",
+  "keywords": [
+    "ioBroker",
+    "wireless",
+    "mbus",
+    "wmbus"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lvogt/ioBroker.wmbus"
+  },
+  "dependencies": {
+    "serialport": "https://github.com/lvogt/node-serialport/tarball/v6.2.2-symlinks"
+  },
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "mocha": "^4.1.0",
+    "chai": "^4.1.2"
+  },
+  "main": "main.js",
+  "scripts": {
+    "test": "node node_modules/mocha/bin/mocha --exit"
+  },
+  "bugs": {
+    "url": "https://github.com/lvogt/ioBroker.wmbus/issues"
+  },
+  "readmeFilename": "README.md"
+}

@@ -1,0 +1,65 @@
+{
+    "common": {
+        "name": "wmbus",
+        "version": "0.1.0",
+        "news": {
+            "0.1.0": {
+                "en": "initial adapter",
+                "de": "Initiale Version",
+                "ru": "Первоначальный адаптер",
+                "pt": "Versão inicial",
+                "fr": "Version initiale",
+                "nl": "Eerste release"
+            }
+        },
+	"title": "Wireless M-Bus",
+        "desc": {
+            "en": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
+            "de": "Empfange Daten von Wireless Meter-Bus (wM-Bus) Geräten (zB Gas- oder Stromzähler)"
+        },
+        "authors": [
+            "Christian Landvogt <landvogt@isfh.de"
+        ],
+        "platform": "Javascript/Node.js",
+        "mode": "daemon",
+        "icon": "wmbus.png",
+        "materialize": true,
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/soef/ioBroker.wm-bus/master/admin/wm-bus.png",
+        "keywords": ["iobroker", "wmbus", "measure", "mbus", "wireless"],
+        "readme": "https://github.com/lvogt/ioBroker.wmbus/blob/master/README.md",
+        "loglevel": "info",
+        "type": "general",
+        "license": "MIT",
+        "messagebox": true
+    },
+    "native": {
+        "deviceType": "EBI",
+        "serialPort": "/dev/ttyWMBUS",
+        "serialBaudRate": 9600
+    },
+    "objects": [],
+    "instanceObjects": [
+        {
+            "_id":  "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id":  "info.connection",
+            "type": "state",
+            "common": {
+                "role":  "indicator.connected",
+                "name":  "If connected to wM-Bus receiver",
+                "type":  "boolean",
+                "read":  true,
+                "write": false,
+                "def":   false
+            },
+            "native": {}
+        }
+    ]
+}

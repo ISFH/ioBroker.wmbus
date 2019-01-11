@@ -1,0 +1,200 @@
+<html>
+<head>
+<!--
+# vim: tabstop=4 shiftwidth=4 expandtab
+     these 4 files always have to be included -->
+<link rel="stylesheet" type="text/css" href="../../lib/css/materialize.css">
+<link rel="stylesheet" type="text/css" href="../../css/adapter.css"/>
+
+<script type="text/javascript" src="../../lib/js/jquery-3.2.1.min.js"></script>
+<script type="text/javascript" src="../../socket.io/socket.io.js"></script>
+
+<!-- these files always have to be included -->
+<script type="text/javascript" src="../../js/translate.js"></script>
+<script type="text/javascript" src="../../lib/js/materialize.js"></script>
+<script type="text/javascript" src="../../js/adapter-settings.js"></script>
+<script type="text/javascript" src="words.js"></script>
+ <style>
+  .m .col .select-wrapper+label {
+   top: -26px;  
+  }
+     .m span{
+         font-size: 0.9em;
+     }
+     input[type="text"][disabled] {
+            color: black !important;
+     }
+ </style>
+<!-- you have to define 2 functions in the global scope: -->
+<script type="text/javascript">
+	let counter = 0;
+	let timeout;
+	
+    function getComPorts(actualValue) {
+        counter++;
+        if (counter > 20) return;
+
+        timeout = setTimeout(function () {
+            getComPorts(actualValue);
+        }, 2000);
+
+        sendTo(null, 'listUart', null, function (list) {
+            if (timeout) {
+                clearTimeout(timeout);
+                timeout = null;
+            }
+            if (!list || !list.length) {
+                setTimeout(function () {
+                    getComPorts(actualValue);
+                }, 1000);
+                return;
+            }
+            var $port = $('#serialPort');
+            var text = '<option value="">' + _('Select port') + '</option>';
+            for (var j = 0; j < list.length; j++) {
+                if (list[j].comName === 'Not available') {
+                    text += '<option value="" selected>' + _('Not available') + '</option>';
+                    $port.prop('disabled', true);
+                    break;
+                } else {
+                    text += '<option value="' + list[j].comName + '" ' + ((actualValue === list[j].comName) ? 'selected' : '') + '>' + list[j].comName + '</option>';
+                    for (var k = 0; k < list[j]['symlinks'].length; k++) {
+                        text += '<option value="' + list[j]['symlinks'][k] + '" ' + ((actualValue === list[j]['symlinks'][k]) ? 'selected' : '') + '>' + list[j]['symlinks'][k] + '</option>';
+                    }
+                }
+            }
+            $port.html(text).select();
+        });
+    }
+
+
+    // the function loadSettings has to exist ...
+    function load(settings, onChange) {
+		console.log(settings);
+        // example: select elements with id=key and class=value and insert value
+        if (!settings) return;
+        
+        settings.deviceType = settings.deviceType || 'EBI';
+		settings.serialPort = settings.serialPort || '/dev/ttyUSB0';
+		settings.serialBaudRate = settings.serialBaudRate || '1200';
+		settings.alwaysUpdate = settings.alwaysUpdate || false;        
+
+		console.log(settings);		
+		
+        $('.value').each(function () {            
+            var $key = $(this);
+            var id = $key.attr('id');
+            if ($key.attr('type') === 'checkbox') {
+		        // do not call onChange direct, because onChange could expect some arguments
+                $key.prop('checked', settings[id]).on('change', function() {
+                    onChange();
+                });
+            } else {
+		        // do not call onChange direct, because onChange could expect some arguments
+                $key.val(settings[id]).on('change', function() {
+                    onChange();
+                }).on('keyup', function() {
+                    onChange();
+                });
+            }
+        });
+		getComPorts(settings.serialPort);
+		
+        onChange(false);
+        M.updateTextFields();  // function Materialize.updateTextFields(); to reinitialize all the Materialize labels on the page if you are dynamically adding inputs.
+    }
+
+    // ... and the function save has to exist.
+    // you have to make sure the callback is called with the settings object as first param!
+    function save(callback) {
+        // example: select elements with class=value and build settings object
+        var obj = {};
+        $('.value').each(function () {
+            var $this = $(this);
+            if ($this.attr('type') === 'checkbox') {
+                obj[$this.attr('id')] = $this.prop('checked');
+            } else {
+                obj[$this.attr('id')] = $this.val();
+            }
+        });
+        callback(obj);
+    }
+
+</script>
+</head>
+<body>
+<div class="m adapter-container">
+    <div class="row">
+        <div class="col s12">
+            <ul class="tabs">
+                <li class="tab col s2"><a href="#tab-main"      class="translate active">Options</a></li>
+                <li class="tab col s2"><a href="#tab-keys" class="translate">AES keys</a></li>
+            </ul>
+        </div>
+        <div id="tab-main"      class="col s12 page">
+            <div class="row">
+                <div class="col s12 m4 l2">
+                    <img src="wmbus.png" class="logo">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col s12 m4">
+                    <label class="translate" for="deviceType">wMBus Receiver</label>
+                    <select class="value" id="deviceType">
+                            <option value="EBI">Embit</option>
+                            <option value="AMBER">Amber</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col s8 m4">
+                    <select class="value" id="serialPort"></select>
+                    <label for="serialPort" class="translate">serialPort</label>
+                </div>
+                <div class="col s8 m4">
+                    <select class="value" id="serialBaudRate">
+                        <option value="110">110</option>
+                        <option value="150">150</option>
+                        <option value="300">300</option>
+                        <option value="600">600</option>
+                        <option value="1200">1200</option>
+                        <option value="2400">2400</option>
+                        <option value="4800">4800</option>
+                        <option value="9600">9600</option>
+                        <option value="19200">19200</option>
+                        <option value="38400">38400</option>
+                        <option value="56000">56000</option>
+                        <option value="57600">57600</option>
+                        <option value="115200">115200</option>
+                    </select>
+                    <label for="serialBaudRate" class="translate">serialBaudRate</label>
+                </div>
+            </div>
+            <div class="row">
+               <div class="col s8 m4">
+                    <input class="value" id="alwaysUpdate" type="checkbox" />
+                    <label for="alwaysUpdate">Update unchanged states</label>
+               </div>
+            </div>
+        </div>
+        <div id="tab-keys" class="col s12 page">
+            <div class="col s12" id="aeskeys">
+                <a class="btn-floating waves-effect waves-light blue table-button-add"><i class="material-icons">add</i></a>
+                <div class="table-values-div">
+                    <table class="table-values">
+                        <thead>
+                        <tr>
+                            <th data-name="id"             class="translate">ID</th>
+                            <th data-name="key" class="translate">AES key</th>
+                            <th data-buttons="delete"></th>
+                        </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+
+</html>
