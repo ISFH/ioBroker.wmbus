@@ -70,8 +70,6 @@
 
     // the function loadSettings has to exist ...
     function load(settings, onChange) {
-		console.log(settings);
-        // example: select elements with id=key and class=value and insert value
         if (!settings) return;
         
         settings.deviceType = settings.deviceType || 'EBI';
@@ -79,8 +77,6 @@
 		settings.serialBaudRate = settings.serialBaudRate || '1200';
 		settings.alwaysUpdate = settings.alwaysUpdate || false;        
 
-		console.log(settings);		
-		
         $('.value').each(function () {            
             var $key = $(this);
             var id = $key.attr('id');
@@ -99,9 +95,10 @@
             }
         });
 		getComPorts(settings.serialPort);
-		
+
         onChange(false);
         M.updateTextFields();  // function Materialize.updateTextFields(); to reinitialize all the Materialize labels on the page if you are dynamically adding inputs.
+        values2table('aeskeys', settings.aeskeys, onChange); 
     }
 
     // ... and the function save has to exist.
@@ -117,6 +114,7 @@
                 obj[$this.attr('id')] = $this.val();
             }
         });
+        obj.aeskeys = table2values('aeskeys');
         callback(obj);
     }
 

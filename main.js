@@ -1,5 +1,5 @@
 /**
-# vim: tabstop=4 shiftwidth=4 expandtab 
+# vim: tabstop=4 shiftwidth=4 expandtab
  *
  * NUT adapter
  *
@@ -83,23 +83,23 @@ function dataReceived(raw_data) {
     let key;
     if ((typeof adapter.config.aeskeys !== 'undefined') && adapter.config.aeskeys.length) {
         // look for perfect match
-        let found = adapter.config.aeskeys.find(function(item) { if (typeof item[0] === 'undefined') return false; else return item[0] == this; }, id);
+        let found = adapter.config.aeskeys.find(function(item) { if (typeof item.id === 'undefined') return false; else return item.id == this; }, id);
         if (typeof found !== 'undefined') { // found
-            key = found[1];
+            key = found.key;
         } else { // which devices names start with our id
-            found = adapter.config.aeskeys.filter(function(item) { if (typeof item[0] === 'undefined') return false; else return this.startsWith(item[0]); }, id);
+            found = adapter.config.aeskeys.filter(function(item) { if (typeof item.id === 'undefined') return false; else return this.startsWith(item.id); }, id);
             if (found.length == 1) { // only 1 match - take it
-                key = found[0][1];
+                key = found[0].key;
             } else if (found.length > 1) { // more than one, find the best
-                let len = found[0][0].length;
+                let len = found[0].id.length;
                 let pos = 0;
                 for (let i = 1; i < found.length; i++) {
-                    if (found[i][0].length > len) {
-                        len = found[i][0].lenght;
+                    if (found[i].id.length > len) {
+                        len = found[i].id.lenght;
                         pos = i;
                     }
                 }
-                key = found[pos][1];
+                key = found[pos].key;
             } 
         }
     }
@@ -269,7 +269,7 @@ function main() {
         }
         decoder = new WMBUS_DECODER({debug: adapter.log.debug, error: adapter.log.error});
         receiver.incomingData = dataReceived;
-        receiver.init(port, {baudRate: baud});
+        receiver.init(port, {baudRate: parseInt(baud)});
         receiver.port.on('error', serialError);
     } catch(e) {
         adapter.log.error("Error opening serial port " + port + " with baudrate " + baud);
@@ -290,7 +290,7 @@ function processMessage(obj) {
                 if (obj.callback) {
                     if (receiver.port) {
                         // read all found serial ports
-                        receiver.port.list(function (err, ports) {
+                        SerialPort.list(function (err, ports) {
                             adapter.log.info('List of port: ' + JSON.stringify(ports));
                             adapter.sendTo(obj.from, obj.command, ports, obj.callback);
                         });

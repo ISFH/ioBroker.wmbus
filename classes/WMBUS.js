@@ -1,5 +1,6 @@
 /*
  *
+# vim: noet ci pi sts=0 sw=4 ts=4 
  * ported from FHEM WMBus.pm # $Id: WMBus.pm 8659 2015-05-30 14:41:28Z kaihs $
  *           http://www.fhemwiki.de/wiki/WMBUS
  * extended by soef
@@ -1832,9 +1833,8 @@ class WMBUS_DECODER {
             Id: this.link_layer.afield_id,
             Manufacturer: this.link_layer.manufacturer,
             Medium: this.link_layer.typestring,
-			ProductName: '',
-			Signature: 0,
-			Status: this.application_layer.statusstring,
+			Status: this.application_layer.status,
+			StatusString: this.application_layer.statusstring,
 			Version: this.link_layer.afield_ver,
 			address: address.toString('hex')
 		}
