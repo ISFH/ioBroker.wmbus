@@ -196,8 +196,7 @@ function initializeDeviceObjects(deviceId, data, callback) {
                 Object.keys(data.deviceInformation).forEach(function (key) {
                     currentState = {};
                     currentState.id = '.info.' + key;
-                    currentState.name = data.deviceInformation[key].name;
-                    currentState.unit = data.deviceInformation[key].unit;
+                    currentState.name = key;
                     neededStates.push(currentState);
                 });
                 

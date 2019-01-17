@@ -1836,7 +1836,7 @@ class WMBUS_DECODER {
 			Status: this.application_layer.status,
 			StatusString: this.application_layer.statusstring,
 			Version: this.link_layer.afield_ver,
-			address: address.toString('hex')
+			Address: address.toString('hex')
 		}
 		result.dataRecord = this.datablocks;
 		
