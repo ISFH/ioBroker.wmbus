@@ -21,7 +21,7 @@ class AMBER_WMBUS {
 			that.logger(data);
 			return;
 		}
-		
+
 		if (data[0] === 0xFF) { // start of telegram
 			that.frameBuffer = data;
 			if (that.frameBuffer.byteLength > 2) {
@@ -42,12 +42,12 @@ class AMBER_WMBUS {
 		}
 	
 		if (that.telegramLength <= that.frameBuffer.byteLength) {
-			var crcPassed = that.checkSum(that.frameBuffer.slice(0, that.telegramLength));
+			var crcPassed = that.checksum(that.frameBuffer.slice(0, that.telegramLength));
 			if (!crcPassed) {
 				that.logger('telegram received - check sum failed: ' + that.frameBuffer.toString('hex'));
 			} else {
 				that.logger('telegram received: ' + that.frameBuffer.toString('hex'));
-				that.parseLinkLayer();	
+				that.parseLinkLayer(that.frameBuffer.slice(0, that.telegramLength-2));
 			}
 			that.frameBuffer = that.frameBuffer.slice(that.telegramLength);
 			that.telegramLength = -1;
@@ -57,7 +57,7 @@ class AMBER_WMBUS {
 	parseLinkLayer(data) {
 		let i = 2;
 		
-		let l_field = data[i++];;
+		let l_field = data[i++]-2;
 		let c_field = data[i++];
 		let address = false;
 		
