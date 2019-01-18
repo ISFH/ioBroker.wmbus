@@ -241,7 +241,7 @@ function updateDeviceStates(deviceNamespace, deviceId, data, callback) {
 function serialError(err) {
     adapter.log.error('Serialport errror: ' + err.message);
     setConnected(false);
-    onClose(main);
+    onClose();
 }
 
 
@@ -274,7 +274,8 @@ function main() {
         adapter.log.error("Error opening serial port " + port + " with baudrate " + baud);
         adapter.log.error(e);
         setConnected(false);
-        onClose(main);
+        return;
+        //onClose(main);
     }
 
     setConnected(true);
@@ -287,7 +288,7 @@ function processMessage(obj) {
         switch (obj.command) {
             case 'listUart':
                 if (obj.callback) {
-                    if (receiver.port) {
+                    if (SerialPort) {
                         // read all found serial ports
                         SerialPort.list(function (err, ports) {
                             adapter.log.info('List of port: ' + JSON.stringify(ports));
