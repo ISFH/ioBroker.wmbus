@@ -29,6 +29,8 @@
 <script type="text/javascript">
 	let counter = 0;
 	let timeout;
+    let needsKey = [];
+    let onChng;
 	
     function getComPorts(actualValue) {
         counter++;
@@ -67,6 +69,29 @@
         });
     }
 
+    function getNeedsKey() {
+        timeoutKeys = setTimeout(function () {
+            getNeedsKey();
+        }, 2000);
+        
+        sendTo(null, 'needsKey', null, function(list) {
+            if (timeoutKeys) {
+                clearTimeout(timeoutKeys);
+                timeoutKeys = null;
+            }
+            
+            needsKey = list;
+            console.log(needsKey);
+            let aeskeys = table2values('aeskeys');
+            list.forEach(function(id) {
+                if (aeskeys.findIndex(function(item) { return item.id == this; }, id) === -1) {
+                    aeskeys.push({id: id, key: "UNKOWN"});
+                }
+            });
+            values2table('aeskeys', aeskeys, onChng);
+        });
+    }
+
 
     // the function loadSettings has to exist ...
     function load(settings, onChange) {
@@ -95,10 +120,12 @@
             }
         });
 		getComPorts(settings.serialPort);
+        onChng = onChange;
 
         onChange(false);
         M.updateTextFields();  // function Materialize.updateTextFields(); to reinitialize all the Materialize labels on the page if you are dynamically adding inputs.
-        values2table('aeskeys', settings.aeskeys, onChange); 
+        values2table('aeskeys', settings.aeskeys, onChange);
+        getNeedsKey();
     }
 
     // ... and the function save has to exist.

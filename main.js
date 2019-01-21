@@ -95,7 +95,7 @@ function dataReceived(raw_data) {
                 let pos = 0;
                 for (let i = 1; i < found.length; i++) {
                     if (found[i].id.length > len) {
-                        len = found[i].id.lenght;
+                        len = found[i].id.length;
                         pos = i;
                     }
                 }
@@ -105,7 +105,11 @@ function dataReceived(raw_data) {
     }
 
     if (typeof key !== 'undefined') {
-        adapter.log.debug("Found AES key: " + key);
+        if (key === "UNKOWN") {
+            key = undefined;
+        } else {
+            adapter.log.debug("Found AES key: " + key);
+        }
     }
 
     decoder.parse(raw_data, raw_data.data, key, function(err, data) {
@@ -298,6 +302,11 @@ function processMessage(obj) {
                         adapter.log.warn('Module serialport is not available');
                         adapter.sendTo(obj.from, obj.command, [{comName: 'Not available'}], obj.callback);
                     }
+                }
+                break;
+            case 'needsKey':
+                if (obj.callback) {
+                    adapter.sendTo(obj.from, obj.command, needsKey, obj.callback);
                 }
                 break;
         }
