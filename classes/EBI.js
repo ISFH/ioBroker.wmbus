@@ -6,7 +6,7 @@ const SerialPort = require('serialport');
 class EBI {
 
     constructor(logger) {
-		this.logger = (typeof logger === 'function' ? logger : console.log);
+        this.logFunc = (typeof logger === 'function' ? logger : console.log);
 
         this.BAUDRATES = {
             1200: 0x01,
@@ -37,6 +37,41 @@ class EBI {
         this.MCU_POLICY_FOLLOW_UART = 0x02;
         this.MCU_POLICY_INTERVAL = 0x03;
         this.MCU_POLICY_W_MBUS = 0x04;
+
+        this.DEVICE_INFORMATION_PROTOCOL = {
+            0x00: "Unknown",
+            0x01: "Proprietary",
+            0x10: "802.15.4",
+            0x20: "ZigBee",
+            0x21: "ZigBee 2004 (1.0)",
+            0x22: "ZigBee 2006",
+            0x23: "ZigBee 2007",
+            0x24: "ZigBee 2007-Pro",
+            0x40: "Wireless M-Bus"
+        };
+
+        this.DEVICE_INFORMATION_MODULE = {
+            0x00: "Unknown",
+            0x10: "Reserved",
+            0x20: "EMB-ZRF2xx",
+            0x24: "EMB-ZRF231xx",
+            0x26: "EMB-ZRF231PA",
+            0x28: "EMB-ZRF212xx",
+            0x29: "EMB-ZRF212B",
+            0x30: "EMB-Z253x",
+            0x34: "EMB-Z2530x",
+            0x36: "EMB-Z2530PA",
+            0x38: "EMB-Z2531x",
+            0x3A: "EMB-Z2531PA-USB",
+            0x3C: "EMB-Z2538x",
+            0x3D: "EMB-Z2538PA",
+            0x40: "EMB-WMBx",
+            0x44: "EMB-WMB169x",
+            0x45: "EMB-WMB169T",
+            0x46: "EMB-WMB169PA",
+            0x48: "EMB-WMB868x",
+            0x49: "EMB-WMB868"
+        };
 
         this.JOINING_NETWORK_PREFERENCE = {
             "JOINING_NETWORK_NOT_PERMITTED": 0x00,
@@ -84,6 +119,10 @@ class EBI {
 
         this.__read_callbacks__ = [];
         this.__read_timeouts__ = [];
+    }
+
+    logger(msg) {
+        this.logFunc("EBI: " + msg);
     }
 
     __On_ebi_data__(data) {
@@ -148,7 +187,7 @@ class EBI {
         //}
         //res[res.length - 1] = sum % 256;
         res[res.length - 1] = that.__Checksum__(res);
-        this.logger(res);
+        //this.logger(res);
         return res;
     }
 
@@ -204,6 +243,7 @@ class EBI {
                 that.dataReceived(payload);
             } else {
                 this.logger("Data but no callback!");
+                this.logger(payload);
             }
         }
     }
@@ -278,7 +318,12 @@ class EBI {
 
     Reset(callback) {
         let message_id = 0x05;
-        this.__Send_ebi_command__(message_id, callback);
+        let that = this;
+        that.__Send_ebi_command__(message_id, function(res) { // wait for second response (device information)
+             that.__Read_ebi_package__(0x04, function(state) { 
+                 callback && callback(state);
+             });
+        });
     }
 
     Firmware_version(callback) {
@@ -646,6 +691,65 @@ class EBI_WMBUS extends EBI {
         let that = this;
         that.port = new SerialPort(dev, opts);
         that.port.on('data', that.__On_ebi_data__.bind(that));
+
+        let all_okay = true;
+
+        // correctly start networking on Embit device
+        // check module type
+        that.Device_Information(function(res) {
+            that.logger("Found " + that.DEVICE_INFORMATION_PROTOCOL[res.payload[0]] + " protocol and module " + that.DEVICE_INFORMATION_MODULE[res.payload[1]]);
+            if (!(res.payload[0] & 0x40)) {
+                that.logger("Error: This does not seem to be an Embit Wirless M-Bus device!");
+                all_okay = false;
+                return;
+            }
+
+            // do a reset for a cleaner state
+            that.Reset(function(res)  {
+                if (res.payload[0] != 0x10) {
+                    that.logger("Warning device not ready! " + res.payload.toString('hex'));
+                    all_okay = false;
+                }
+                that.logger("Device ready");
+                // set channel, power, energy saving
+                that.Output_power_set(0x0F, function(res) {
+                    that.logger("Power set to max");
+                    if (res.transmission_ok != 'Success') { all_okay = false; }
+                    that.Operating_channel_set(0x19, function(res) {
+                        that.logger("Channel set to T-Mode 868.950[MHz] @66.666[kbps]");
+                        if (res.transmission_ok != 'Success') { all_okay = false; }
+                        that.Energy_save_set(0x00, 0x00, function(res) {
+                            that.logger("Energy saving disabled");
+                            if (res.transmission_ok != 'Success') { all_okay = false; }
+                            // start network
+                            if (all_okay) { // autocreate network
+                                that.Network_automated_settings_set(1, function(res) {
+                                    that.logger("Automatically start network");
+                                    if (res.transmission_ok != 'Success') { all_okay = false; }
+                                    if (all_okay) // save settings
+                                    {
+                                        that.Save_settings(function(res) {
+                                            that.logger("Settings saved");
+                                            that.Network_start(function(res) { 
+                                                that.logger("Network start "  + (res.transmission_ok != 'Success' ? 'failed!' : 'okay!'));
+                                            });
+                                        });
+                                    } else {
+                                        that.Network_start(function(res) {
+                                            that.logger("Network start "  + (res.transmission_ok != 'Success' ? 'failed!' : 'okay!'));
+                                        });
+                                    }
+                                });
+                            } else {
+                                that.Network_start(function(res) {
+                                    that.logger("Network start "  + (res.transmission_ok != 'Success' ? 'failed!' : 'okay!'));
+                                });
+                            }
+                        });
+                    });
+                });
+            });
+        });
     }
 
     dataReceived(payload) {
