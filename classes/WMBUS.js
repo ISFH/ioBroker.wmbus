@@ -12,6 +12,7 @@
  */
 
 const crypto = require('crypto');
+const aesCmac = require('node-aes-cmac').aesCmac;
 
 class CRC {
 	constructor(polynom, initValue, finalXor) {
@@ -91,10 +92,13 @@ class WMBUS_DECODER {
 			CI_ERROR: 0x70,   // Error from device, only specified for wired M-Bus but used by Easymeter WMBUS module
 			CI_TL_4: 0x8a,    // Transport layer from device, 4 Bytes
 			CI_TL_12: 0x8b,   // Transport layer from device, 12 Bytes
+
+			// see https://www.telit.com/wp-content/uploads/2017/09/Telit_Wireless_M-bus_2013_Part4_User_Guide_r14.pdf, 2.3.4
 			CI_ELL_2: 0x8c,   // Extended Link Layer, 2 Bytes
-			CI_ELL_6: 0x8e,   // Extended Link Layer, 6 Bytes
-			CI_ELL_8: 0x8d,   // Extended Link Layer, 8 Bytes (see https://www.telit.com/wp-content/uploads/2017/09/Telit_Wireless_M-bus_2013_Part4_User_Guide_r14.pdf, 2.3.4)
-			CI_ELL_16: 0x8f,  // Extended Link Layer, 16 Bytes (see https://www.telit.com/wp-content/uploads/2017/09/Telit_Wireless_M-bus_2013_Part4_User_Guide_r14.pdf, 2.3.4)
+			CI_ELL_8: 0x8d,   // Extended Link Layer, 8 Bytes 
+			CI_ELL_10: 0x8e,  // Extended Link Layer, 10 Bytes
+			CI_ELL_16: 0x8f,  // Extended Link Layer, 16 Bytes
+
 			CI_AFL: 0x90,     // Authentification and Fragmentation Layer, variable size
 			CI_RESP_SML_4: 0x7e, // Response from device, 4 Bytes, application layer SML encoded
 			CI_RESP_SML_12: 0x7f, // Response from device, 12 Bytes, application layer SML encoded
@@ -862,6 +866,7 @@ class WMBUS_DECODER {
 		this.errorcode = this.constant.ERR_NO_ERROR;
 		this.errormsg = '';
 		this.frame_type = this.constant.FRAME_TYPE_A; // default
+		this.alreadyDecrypted = false;
 
 	} // constructor end
 
@@ -872,7 +877,7 @@ class WMBUS_DECODER {
 
         let s = format.replace('YYYY', date.getFullYear());
         s = s.replace('MM', pad(date.getMonth()+1));
-        s = s.replace('DD', pad(date.getDay()));
+        s = s.replace('DD', pad(date.getDate()));
         s = s.replace('hh', pad(date.getHours()));
         s = s.replace('mm', pad(date.getMinutes()));
         return s;
@@ -897,18 +902,17 @@ class WMBUS_DECODER {
 		// 0b0000 1100 111 11111 = 31.12.2007
 		// 0b0000 0100 111 11110 = 30.04.2007
 
-		var day = (value & 0b11111);
-		var month = ((value & 0b111100000000) >> 8);
-		var year = (((value & 0b1111000000000000) >> 9) |
-			((value & 0b11100000) >> 5)) + 2000;
+		let day = (value & 0b11111);
+		let month = ((value & 0b111100000000) >> 8);
+		let year = (((value & 0b1111000000000000) >> 9) | ((value & 0b11100000) >> 5)) + 2000;
 		if (day > 31 || month > 12 || year > 2099) {
 			app.log.error("invalid: " + value);
 			return "invalid: " + value;
 		}
-		var date = new Date(year, month, day);
+		let date = new Date(year, month-1, day);
 		return this.formatDate(date, 'YYYY-MM-DD');
 	}
-
+	
 	valueCalcDateTime(value, dataBlock) {
 		// min: UI6 [1 to 6] <0 to 59>
 		// hour: UI5 [9 to13] <0 to 23>
@@ -930,7 +934,7 @@ class WMBUS_DECODER {
 		let datePart = value >> 16;
 		let timeInvalid = value & 0b10000000;
 
-		let dateTime = valueCalcDate(datePart, dataBlock);
+		let dateTime = this.valueCalcDate(datePart, dataBlock);
 		if (timeInvalid == 0) {
 			let min = (value & 0b111111);
 			let hour = (value >> 8) & 0b11111;
@@ -941,7 +945,7 @@ class WMBUS_DECODER {
 				let date = new Date(0);
 				date.setHours(hour);
 				date.setMinutes(min);
-				dateTime = this.formatDate(date, "hh:mm") + su ? 'DST' : '';
+				dateTime += ' ' + this.formatDate(date, "hh:mm") + (su ? ' DST' : '');
 			}
 		}
 		return dateTime;
@@ -1006,14 +1010,32 @@ class WMBUS_DECODER {
 
 	decodeConfigword(cw) {
 		this.config = {};
-		// bit12 is reserverd
-		this.config.bidirectional    = (cw & 0b1000000000000000) >> 15;
-		this.config.accessability    = (cw & 0b0100000000000000) >> 14;
-		this.config.synchronous      = (cw & 0b0010000000000000) >> 13;
-		this.config.mode             = (cw & 0b0000111100000000) >> 8;
-		this.config.encrypted_blocks = (cw & 0b0000000011110000) >> 4;
-		this.config.content          = (cw & 0b0000000000001100) >> 2;
-		this.config.hop_counter      = (cw & 0b0000000000000011);
+		// mode 5
+		this.config.bidirectional    = (cw & 0b1000000000000000) >> 15; /* mode 5 */
+		this.config.content          = (cw & 0b1100000000000000) >> 14; /* mode 7 */
+		this.config.accessability    = (cw & 0b0100000000000000) >> 14; /* mode 5 */
+		this.config.synchronous      = (cw & 0b0010000000000000) >> 13; /* mode 5 */
+		this.config.mode             = (cw & 0b0001111100000000) >> 8;
+		this.config.encrypted_blocks = (cw & 0b0000000011110000) >> 4;  /* mode 5 + 7 */
+		this.config.encrypted_bytes  = (cw & 0b0000000011111111) >> 4;  /* mode 13 */
+		this.config.content          = (cw & 0b0000000000001100) >> 2;  /* mode 5 */
+		this.config.hop_counter      = (cw & 0b0000000000000011);       /* mode 5 */
+	}
+	
+	decodeConfigwordExt(cwe) {
+		if (this.config.mode == 7) {
+			                          /* 0b10000000 - reserved
+			                             0b01000000 - reserved for version */
+			this.config.kdf_sel = (cwe & 0b00110000) >> 4; 
+			this.config.keyid   =  cwe & 0b00001111;
+			return;
+		}
+		
+		if (this.config.mode == 13) {
+			                            /* 0b11110000 - reserved */
+			this.config.proto_type = cwe & 0b00001111;
+			return;
+		}
 	}
 
 	decodeBCD(digits, bcd) {
@@ -1042,7 +1064,9 @@ class WMBUS_DECODER {
 					} else {
 						dataBlockRef.valueFactor = 1;
 					}
-					dataBlockRef.calcFunc = vifInfoRef[vifType].calcFunc;
+					if (typeof vifInfoRef[vifType].calcFunc === 'function') {
+						dataBlockRef.calcFunc = vifInfoRef[vifType].calcFunc.bind(this);
+					}
 
 					this.logger.debug('type ' + dataBlockRef.type + ' bias ' + bias + ' exp ' + dataBlockRef.exponent + ' valueFactor ' + dataBlockRef.valueFactor + ' unit ' + dataBlockRef.unit);
 					return 1;
@@ -1071,7 +1095,12 @@ class WMBUS_DECODER {
 
 		EXTENSION:
 			while (1) {
+				if (offset >= vib.length) {
+					this.logger.debug('Warning: vib buffer was exceed!');
+					break;
+				}
 				vif = vib[offset++];
+
 				isExtension = vif & this.constant.VIF_EXTENSION_BIT;
 				this.logger.debug('vif: ' + vif.toString(16) + ' isExtension ' + isExtension);
 
@@ -1251,112 +1280,116 @@ class WMBUS_DECODER {
 
 				offset += this.decodeDataRecordHeader(payload.slice(offset), dataBlock);
 				this.logger.debug("No. " + dataBlockNo + " type " + dataBlock.dataField.toString(16) + " at offset " + (offset - 1));
-
-				switch (dataBlock.dataField) {
-					case this.constant.DIF_NONE:
-						break;
-					case this.constant.DIF_READOUT:
-						this.errormsg = "in datablock " + dataBlockNo + ": unexpected DIF_READOUT";
-						this.errorcode = this.constant.ERR_UNKNOWN_DATAFIELD;
-						this.logger.error(this.errormsg);
-						return 0;
-					case this.constant.DIF_BCD2:
-						value = this.decodeBCD(2, payload.slice(offset, offset+1));
-						offset += 1;
-						break;
-					case this.constant.DIF_BCD4:
-						value = this.decodeBCD(4, payload.slice(offset, offset+2));
-						offset += 2;
-						break;
-					case this.constant.DIF_BCD6:
-						value = this.decodeBCD(6, payload.slice(offset, offset+3));
-						offset += 3;
-						break;
-					case this.constant.DIF_BCD8:
-						value = this.decodeBCD(8, payload.slice(offset, offset+4));
-						offset += 4;
-						break;
-					case this.constant.DIF_BCD12:
-						value = this.decodeBCD(12, payload.slice(offset, offset+6));
-						offset += 6;
-						break;
-					case this.constant.DIF_INT8:
-						value = payload.readInt8(offset);
-						offset += 1;
-						break;
-					case this.constant.DIF_INT16:
-						value = payload.readUInt16LE(offset);
-						offset += 2;
-						break;
-					case this.constant.DIF_INT24:
-						value = payload.readUIntLE(offset, 3);
-						offset += 3;
-						break;
-					case this.constant.DIF_INT32:
-						value = payload.readUInt32LE(offset);
-						offset += 4;
-						break;
-					case this.constant.DIF_INT48:
-						value = payload.readUIntLE(offset, 6);
-						offset += 6;
-						break;
-					case this.constant.DIF_INT64:
-						// this might be wrong...
-						let low = payload.readUInt32LE(offset);
-						let high = payload.readUInt32LE(offset+4);
-						value = low + (high << 32);
-						offset += 8;
-						break;
-					case this.constant.DIF_FLOAT32:
-						//not allowed according to wmbus standard, Qundis seems to use it nevertheless
-						value = payload.readFloatLE(offset);
-						offset += 4;
-						break;
-					case this.constant.DIF_VARLEN:
-						let lvar = payload[offset++] || 0;
-						this.logger.debug("in datablock " + dataBlockNo + ": lvar field " + lvar.toString(16));
-						this.logger.debug("payload len " + payload.length + " offset " + offset);
-						if (lvar <= 0xbf) {
-							if (dataBlock.type === this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC) {
-								// special handling, LSE seems to lie about this
-								value = payload.toString('hex', offset, offset+lvar);
-								this.logger.debug("VALUE: " + value);
-							} else {
-								//  ASCII string with lvar characters
-								value = payload.toString('ascii', offset, offset+lvar);
-								if (this.link_layer.manufacturer === 'ESY') {
-									// Easymeter stores the string backwards!
-									value = value.split('').reverse().join('');
-								}
-							}
-							offset += lvar;
-						} else if (lvar >= 0xc0 && lvar <= 0xcf) {
-							//  positive BCD number with (lvar - C0h) * 2 digits
-							value = this.decodeBCD((lvar - 0xc0) * 2, payload.slice(offset, offset+(lvar - 0xc0)));
-							offset += (lvar - 0xc0);
-						} else if (lvar >= 0xd0 && lvar <= 0xdf) {
-							//  negative BCD number with (lvar - D0h) * 2 digits
-							value = -1 * this.decodeBCD((lvar - 0xd0) * 2, payload.slice(offset, offset+(lvar - 0xd0)));
-							offset += (lvar - 0xd0);
-						} else {
-							this.errormsg = "in datablock " + dataBlockNo + ": unhandled lvar field " + lvar.toString(16);
-							this.errorcode = this.constant.ERR_UNKNOWN_LVAR;
+				
+				try {
+					switch (dataBlock.dataField) {
+						case this.constant.DIF_NONE:
+							break;
+						case this.constant.DIF_READOUT:
+							this.errormsg = "in datablock " + dataBlockNo + ": unexpected DIF_READOUT";
+							this.errorcode = this.constant.ERR_UNKNOWN_DATAFIELD;
 							this.logger.error(this.errormsg);
 							return 0;
-						}
-						break;
-					case this.constant.DIF_SPECIAL:
-						// special functions
-						this.logger.debug("DIF_SPECIAL at" + offset);
-						value = payload.toString('hex', offset);
-						break PAYLOAD;
-					default:
-						this.errormsg = "in datablock " + dataBlockNo + ": unhandled datafield " + dataBlock.dataField.toString(16);
-						this.errorcode = this.constant.ERR_UNKNOWN_DATAFIELD;
-						this.logger.error(this.errormsg);
-						return 0;
+						case this.constant.DIF_BCD2:
+							value = this.decodeBCD(2, payload.slice(offset, offset+1));
+							offset += 1;
+							break;
+						case this.constant.DIF_BCD4:
+							value = this.decodeBCD(4, payload.slice(offset, offset+2));
+							offset += 2;
+							break;
+						case this.constant.DIF_BCD6:
+							value = this.decodeBCD(6, payload.slice(offset, offset+3));
+							offset += 3;
+							break;
+						case this.constant.DIF_BCD8:
+							value = this.decodeBCD(8, payload.slice(offset, offset+4));
+							offset += 4;
+							break;
+						case this.constant.DIF_BCD12:
+							value = this.decodeBCD(12, payload.slice(offset, offset+6));
+							offset += 6;
+							break;
+						case this.constant.DIF_INT8:
+							value = payload.readInt8(offset);
+							offset += 1;
+							break;
+						case this.constant.DIF_INT16:
+							value = payload.readUInt16LE(offset);
+							offset += 2;
+							break;
+						case this.constant.DIF_INT24:
+							value = payload.readUIntLE(offset, 3);
+							offset += 3;
+							break;
+						case this.constant.DIF_INT32:
+							value = payload.readUInt32LE(offset);
+							offset += 4;
+							break;
+						case this.constant.DIF_INT48:
+							value = payload.readUIntLE(offset, 6);
+							offset += 6;
+							break;
+						case this.constant.DIF_INT64:
+							// this might be wrong...
+							let low = payload.readUInt32LE(offset);
+							let high = payload.readUInt32LE(offset+4);
+							value = low + (high << 32);
+							offset += 8;
+							break;
+						case this.constant.DIF_FLOAT32:
+							//not allowed according to wmbus standard, Qundis seems to use it nevertheless
+							value = payload.readFloatLE(offset);
+							offset += 4;
+							break;
+						case this.constant.DIF_VARLEN:
+							let lvar = payload[offset++] || 0;
+							this.logger.debug("in datablock " + dataBlockNo + ": lvar field " + lvar.toString(16));
+							this.logger.debug("payload len " + payload.length + " offset " + offset);
+							if (lvar <= 0xbf) {
+								if (dataBlock.type === this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC) {
+									// special handling, LSE seems to lie about this
+									value = payload.toString('hex', offset, offset+lvar);
+									this.logger.debug("VALUE: " + value);
+								} else {
+									//  ASCII string with lvar characters
+									value = payload.toString('ascii', offset, offset+lvar);
+									if (this.link_layer.manufacturer === 'ESY') {
+										// Easymeter stores the string backwards!
+										value = value.split('').reverse().join('');
+									}
+								}
+								offset += lvar;
+							} else if (lvar >= 0xc0 && lvar <= 0xcf) {
+								//  positive BCD number with (lvar - C0h) * 2 digits
+								value = this.decodeBCD((lvar - 0xc0) * 2, payload.slice(offset, offset+(lvar - 0xc0)));
+								offset += (lvar - 0xc0);
+							} else if (lvar >= 0xd0 && lvar <= 0xdf) {
+								//  negative BCD number with (lvar - D0h) * 2 digits
+								value = -1 * this.decodeBCD((lvar - 0xd0) * 2, payload.slice(offset, offset+(lvar - 0xd0)));
+								offset += (lvar - 0xd0);
+							} else {
+								this.errormsg = "in datablock " + dataBlockNo + ": unhandled lvar field " + lvar.toString(16);
+								this.errorcode = this.constant.ERR_UNKNOWN_LVAR;
+								this.logger.error(this.errormsg);
+								return 0;
+							}
+							break;
+						case this.constant.DIF_SPECIAL:
+							// special functions
+							this.logger.debug("DIF_SPECIAL at" + offset);
+							value = payload.toString('hex', offset);
+							break PAYLOAD;
+						default:
+							this.errormsg = "in datablock " + dataBlockNo + ": unhandled datafield " + dataBlock.dataField.toString(16);
+							this.errorcode = this.constant.ERR_UNKNOWN_DATAFIELD;
+							this.logger.error(this.errormsg);
+							return 0;
+					}
 				}
-
+				catch (e) {
+					this.logger.debug("Warning: Not enough data for VIF type! Incomplete telegram data?");
+				}
 				if (typeof dataBlock.calcFunc === 'function') {
 					dataBlock.value = dataBlock.calcFunc(value, dataBlock);
 					this.logger.debug("Value raw " + value + " value calc " + dataBlock.value);
@@ -1392,23 +1425,39 @@ class WMBUS_DECODER {
 		// see 4.2.5.3, page 26
 		let initVector;
 		if (typeof iv === 'undefined') {
-			initVector = Buffer.alloc(this.application_layer.access_no);
-			this.link_layer.copy(initVector, 0, 0, 8);
+			initVector = Buffer.concat([Buffer.alloc(2), this.link_layer.afield, Buffer.alloc(8, this.application_layer.access_no)]);
+			initVector.writeUInt16LE(this.link_layer.mfield);
 		} else {
 			initVector = iv;
 		}
 		algorithm = (typeof algorithm === 'undefined' ? 'aes-128-cbc' : algorithm);
 		const decipher = crypto.createDecipheriv(algorithm, key, initVector);
+		decipher.setAutoPadding(false);
+		let padding = encrypted.length % 16;
+		if (padding) {
+			this.logger.debug("Added padding: " + padding);
+			let len = encrypted.length;
+			encrypted = Buffer.concat([encrypted, Buffer.alloc(16-padding)]);
+			return Buffer.concat([decipher.update(encrypted), decipher.final()]).slice(0, len);
+		}
 		return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 	}
 
 	decrypt_mode7(encrypted, key) {
 		// see 9.2.4, page 59
 		let initVector = Buffer.alloc(16, 0x00);
-		return this.decrypt(encrypted, key, initVector);
+		// KDF
+		let msg = Buffer.alloc(16, 0x07);
+		msg[0] = 0x00 // derivation constant (see. 9.5.3) 00 = Kenc (from meter) 01 = Kmac (from meter)
+		msg.writeUInt32LE(this.afl.mcr, 1);
+		if (typeof this.application_layer.meter_id !== 'undefined') {
+			msg.writeUInt32LE(this.application_layer.meter_id, 5);
+		} else {
+			msg.writeUInt32LE(this.link_layer.afield.readUInt32LE(0), 5);
+		}
+		let cmac = aesCmac(key, msg, {returnAsBuffer: true});
+		return this.decrypt(encrypted, cmac, initVector);
 	}
-
-	//generateMAC is not yet ported - is it currently used anywhere?!
 
 	decodeAFL(afl) {
 		let offset = 0;
@@ -1418,60 +1467,68 @@ class WMBUS_DECODER {
 		}
 		this.afl.fcl = afl.readUInt16LE(offset);
 		offset += 2;
-		this.afl.fcl_mf   = (this.afl.fcl & 0b0100000000000000) != 0;
-		this.afl.fcl_mclp = (this.afl.fcl & 0b0010000000000000) != 0;
-		this.afl.fcl_mlp  = (this.afl.fcl & 0b0001000000000000) != 0;
-		this.afl.fcl_mcrp = (this.afl.fcl & 0b0000100000000000) != 0;
-		this.afl.fcl_macp = (this.afl.fcl & 0b0000010000000000) != 0;
-		this.afl.fcl_kip  = (this.afl.fcl & 0b0000001000000000) != 0;
-		this.afl.fcl_fid  = this.afl.fcl & 0b0000000011111111;
+		                                 /* 0b1000000000000000 - reserved */
+		this.afl.fcl_mf   = (this.afl.fcl & 0b0100000000000000) != 0; /* More fragments: 0 last fragment; 1 more following */
+		this.afl.fcl_mclp = (this.afl.fcl & 0b0010000000000000) != 0; /* Message Control Field present in fragment */
+		this.afl.fcl_mlp  = (this.afl.fcl & 0b0001000000000000) != 0; /* Message Length Field present in fragment */
+		this.afl.fcl_mcrp = (this.afl.fcl & 0b0000100000000000) != 0; /* Message Counter Field present in fragment */
+		this.afl.fcl_macp = (this.afl.fcl & 0b0000010000000000) != 0; /* MAC Field present in fragment */
+		this.afl.fcl_kip  = (this.afl.fcl & 0b0000001000000000) != 0; /* Key Information present in fragment */
+		                                 /* 0b0000000100000000 - reserved */
+		this.afl.fcl_fid  =  this.afl.fcl & 0b0000000011111111; /* fragment ID */
 
 		if (this.afl.fcl_mclp) {
 			// AFL Message Control Field (AFL.MCL)
 			this.afl.mcl = afl[offset++];
-			this.afl.mcl_mlmp = (this.afl.mcl & 0b01000000) != 0;
-			this.afl.mcl_mcmp = (this.afl.mcl & 0b00100000) != 0;
-			this.afl.mcl_kimp = (this.afl.mcl & 0b00010000) != 0;
-			this.afl.mcl_at = (this.afl.mcl & 0b00001111);
+			                                 /* 0b10000000 - reserved */
+			this.afl.mcl_mlmp = (this.afl.mcl & 0b01000000) != 0; /* Message Length Field present in message */
+			this.afl.mcl_mcmp = (this.afl.mcl & 0b00100000) != 0; /* Message Counter Field present in message */
+			this.afl.mcl_kimp = (this.afl.mcl & 0b00010000) != 0; /* Key Information Field present in message */
+			this.afl.mcl_at   = (this.afl.mcl & 0b00001111); /* Authentication-Type */
 		}
+		
+		if (this.afl.fcl_kip) {
+			// AFL Key Information Field (AFL.KI)
+			this.afl.ki = afl.readUInt16LE(offset);
+			offset += 2;
+			this.afl.ki_key_version   = (this.afl.ki & 0b1111111100000000) >> 8;
+			                                        /* 0b0000000011000000 - reserved */
+			this.afl.ki_kdf_selection = (this.afl.ki & 0b0000000000110000) >> 4;
+			this.afl.ki_key_id        = (this.afl.ki & 0b0000000000001111);
+		}
+		
 		if (this.afl.fcl_mcrp) {
 			// AFL Message Counter Field (AFL.MCR)
 			this.afl.mcr = afl.readUInt32LE(offset);
 			this.logger.debug("AFL MC " + this.afl.mcr);
 			offset += 4;
 		}
-		if (this.afl.fcl_mlp) {
-			// AFL Message Length Field (AFL.ML)
-			this.afl.ml = afl.readUInt16LE(offset);
-			offset += 2;
-		}
 		if (this.afl.fcl_macp) {
-			// AFL MAC Field (AFL.MCL)
-			// The length of the MAC field depends on the selected option AFL.MCL.AT indicated by the
-			// AFL.MCL field.
+			// AFL MAC Field (AFL.MAC)
+			// length of the MAC field depends on AFL.MCL.AT indicated by the AFL.MCL field
+			// currently only AT = 5 is used (AES-CMAC-128 8bytes truncated)
 			let mac_len = 0;
 			if (this.afl.mcl_at == 4) {
 				mac_len = 4;
-				this.afl.mac = afl.readUInt32BE(offset);
+				//this.afl.mac = afl.readUInt32BE(offset);
 			} else if (this.afl.mcl_at == 5) {
 				mac_len = 8;
-				this.afl.mac = (afl.readUInt32BE(offset) << 32) | (afl.readUInt32BE(offset+4));
+				//this.afl.mac = (afl.readUInt32BE(offset) << 32) | (afl.readUInt32BE(offset+4));
 			} else if (this.afl.mcl_at == 6) {
 				mac_len = 12;
 			} else if (this.afl.mcl_at == 7) {
 				mac_len = 16;
 			}
-			this.logger.debug("AFL MAC " + this.afl.mac.toString(16));
+			this.afl.mac = afl.slice(offset, offset+mac_len);
 			offset += mac_len;
+			this.logger.debug("AFL MAC " + this.afl.mac.toString('hex'));
 		}
-		if (this.afl.fcl_kip) {
-			// AFL Key Information-Field (AFL.KI)
-			this.afl.ki = afl.readUInt16LE(offset); // offset was missing?
-			this.afl.ki_key_version   = (this.afl.ki & 0b1111111100000000) >> 8;
-			this.afl.ki_kdf_selection = (this.afl.ki & 0b0000000001110000) >> 4;
-			this.afl.ki_key_id        = (this.afl.ki & 0b0000000000001111);
+		if (this.afl.fcl_mlp) {
+			// AFL Message Length Field (AFL.ML)
+			this.afl.ml = afl.readUInt16LE(offset);
 			offset += 2;
 		}
+
 		return offset;
 	}
 
@@ -1491,23 +1548,26 @@ class WMBUS_DECODER {
 				this.ell.cc = applayer[offset++];
 				this.ell.access_no = applayer[offset++];
 			break;
-			case this.constant.CI_ELL_6: // Extended Link Layer
-				this.ell.cc = applayer[offset++];
-				this.ell.access_no = applayer[offset++];
-				offset += 4;
-			break;
 			case this.constant.CI_ELL_8: // Extended Link Layer, payload CRC is part of (encrypted) payload
 				this.ell.cc = applayer[offset++];
 				this.ell.access_no = applayer[offset++];
 				this.ell.session_number = applayer.readUInt32LE(offset);
 				offset += 4;
 			break;
-			case this.constant.CI_ELL_16: // Extended Link Layer
+			case this.constant.CI_ELL_10: // Extended Link Layer
 				this.ell.cc = applayer[offset++];
 				this.ell.access_no = applayer[offset++];
 				this.ell.m2 = applayer.readUInt16LE(offset);
 				offset += 2;
-				this.ell.a2 = applayer.toString('ascii', offset, offset+6);
+				this.ell.a2 = applayer.slice(offset, offset+6);
+				offset += 6;
+			break;
+			case this.constant.CI_ELL_16: // Extended Link Layer, payload CRC is part of (encrypted) payload
+				this.ell.cc = applayer[offset++];
+				this.ell.access_no = applayer[offset++];
+				this.ell.m2 = applayer.readUInt16LE(offset);
+				offset += 2;
+				this.ell.a2 = applayer.slice(offset, offset+6);
 				offset += 6;
 				this.ell.session_number = applayer.readUInt32LE(offset);
 				offset += 4;
@@ -1517,9 +1577,9 @@ class WMBUS_DECODER {
 		let payload;
 
 		if (typeof this.ell.session_number !== 'undefined') {
-			this.ell.session_number_enc = this.ell.session_number >> 29;
-			this.ell.session_number_time = (this.ell.session_number & 0b0001111111111111111111111111111) >> 4;
-			this.ell.session_number_session = this.ell.session_number & 0b1111;
+			this.ell.session_number_enc     = (this.ell.session_number & 0b11100000000000000000000000000000) >> 29;
+			this.ell.session_number_time    = (this.ell.session_number & 0b00011111111111111111111111110000) >> 4;
+			this.ell.session_number_session =  this.ell.session_number & 0b00000000000000000000000000001111;
 			this.isEncrypted = this.ell.session_number_enc != 0;
 			this.decrypted = 0;
 
@@ -1527,8 +1587,8 @@ class WMBUS_DECODER {
 				if (this.aeskey) {
 					// AES IV
 					// M-field, A-field, CC, SN, 00, 0000
-					let initVector = Buffer.alloc(16);
-					this.link_layer.copy(initVector, 0, 0, 8);
+					let initVector = Buffer.concat([Buffer.alloc(2), this.link_layer.afield, Buffer.alloc(8)]);
+					initVector.writeUInt16LE(this.link_layer.mfield);
 					initVector[8] = this.ell.cc;
 					initVector.writeUInt32LE(this.ell.session_number, 9);
 					payload = this.decrypt(applayer.slice(offset), this.aeskey, initVector, 'aes-128-ctr');
@@ -1540,7 +1600,7 @@ class WMBUS_DECODER {
 				}
 
 				this.ell.crc = payload.readUInt16(0);
-				$offset += 2;
+				offset += 2;
 				// PayloadCRC is a cyclic redundancy check covering the remainder of the frame (excluding the CRC fields)
 				// payloadCRC is also encrypted
 				let crc = this.crc.crc(payload.slice(2, this.transport_layer.lfield - 20 + 2));
@@ -1587,7 +1647,8 @@ class WMBUS_DECODER {
 		}
 
 		// initialize some fields
-		let cw = 0;
+		let config_field = 0;
+		let config_field_ext = 0;
 		this.application_layer.status = 0;
 		this.application_layer.statusstring = "";
 		this.application_layer.access_no = 0;
@@ -1598,8 +1659,13 @@ class WMBUS_DECODER {
 				this.logger.debug("short header");
 				this.application_layer.access_no = applayer[offset++];
 				this.application_layer.status = applayer[offset++];
-				cw = applayer.readUInt16LE(offset);
+				config_field = applayer.readUInt16LE(offset);
 				offset += 2;
+				this.decodeConfigword(config_field);
+				if ((this.config.mode == 7) || (this.config.mode == 13)) {
+					config_field_ext = applayer[offset++];
+					this.decodeConfigwordExt(config_field_ext);
+				}
 				break;
 			case this.constant.CI_RESP_12:
 			case this.constant.CI_RESP_SML_12:
@@ -1612,8 +1678,13 @@ class WMBUS_DECODER {
 				this.application_layer.meter_dev = applayer[offset++];
 				this.application_layer.access_no = applayer[offset++];
 				this.application_layer.status = applayer[offset++];
-				cw = applayer.readUInt16LE(offset);
+				config_field = applayer.readUInt16LE(offset);
 				offset += 2;
+				this.decodeConfigword(config_field);
+				if ((this.config.mode == 7) || (this.config.mode == 13)) {
+					config_field_ext = applayer[offset++];
+					this.decodeConfigwordExt(config_field_ext);
+				}
 				this.application_layer.meter_id = this.application_layer.meter_id.toString().padStart(8, '0');
 				this.application_layer.meter_devtypestring = this.validDeviceTypes[this.application_layer.meter_dev] || 'unknown';
 				this.application_layer.meter_manufacturer = this.manId2ascii(this.application_layer.meter_man).toUpperCase();
@@ -1675,14 +1746,14 @@ class WMBUS_DECODER {
 				}
 			default:
 				// unsupported
-				this.decodeConfigword(cw);
+				this.decodeConfigword(config_field);
 				this.errormsg = 'Unsupported CI Field ' + this.application_layer.cifield.toString(16) + ", remaining payload is " + applayer.toString('hex', offset);
 				this.errorcode = this.constant.ERR_UNKNOWN_CIFIELD;
 				this.logger.error(this.errormsg);
 				return 0;
 		}
 		this.application_layer.statusstring = this.state2string(this.application_layer.status).join(", ");
-		this.decodeConfigword(cw);
+		//this.decodeConfigword(cw);
 
 		this.encryptionMode = this.encryptionModes[this.config.mode];
 		switch (this.config.mode) {
@@ -1694,13 +1765,24 @@ class WMBUS_DECODER {
 
 			case 5: // data is encrypted with AES 128, dynamic init vector
 					// decrypt data before further processing
+			case 7: // ephemeral key is used (see 9.2.4)
+				// data got decrypted by gateway or similar
+				if (this.alreadyDecrypted) {
+					payload = applayer.slice(offset);
+					this.logger.debug("Data already decrypted");
+					break;
+				}
 				this.isEncrypted = 1;
 				this.decrypted = 0;
 
 				if (this.aeskey) {
 						let encrypted_length = this.config.encrypted_blocks * 16;
 						this.logger.debug("encrypted payload: " + applayer.slice(offset, offset+encrypted_length).toString('hex'));
-						payload = Buffer.concat([this.decrypt(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
+						if (this.config.mode == 5) {
+							payload = Buffer.concat([this.decrypt(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
+						} else { // mode 7
+							payload = Buffer.concat([this.decrypt_mode7(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
+						}
 						this.logger.debug("decrypted payload " + payload.toString('hex'));
 						if (payload.readUInt16BE(0) == 0x2f2f) {
 							this.decrypted = 1;
@@ -1713,10 +1795,14 @@ class WMBUS_DECODER {
 						}
 				} else {
 					this.errormsg = 'encrypted message and no aeskey provided';
-					this.errorcode = ERR_NO_AESKEY;
+					this.errorcode = this.constant.ERR_NO_AESKEY;
 					this.logger.error(this.errormsg);
 					return 0;
 				}
+				break;
+				
+			case 7:
+			
 				break;
 
 			default:
@@ -1809,6 +1895,7 @@ class WMBUS_DECODER {
 		
 		this.errorcode = this.constant.ERR_NO_ERROR;
 		this.errormsg = '';
+		this.alreadyDecrypted = (typeof ll.decrypted !== 'undefined' ? ll.decrypted : false);
 		
 		if (typeof key !== 'undefined') {
 			this.aeskey = key;

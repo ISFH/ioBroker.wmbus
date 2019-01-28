@@ -20,6 +20,7 @@
     "url": "https://bitbucket.org/isfh-ees/iobroker.wmbus/"
   },
   "dependencies": {
+    "node-aes-cmac": "^0.1.1",
     "serialport": "https://github.com/lvogt/node-serialport/tarball/v6.2.2-symlinks"
   },
   "devDependencies": {
