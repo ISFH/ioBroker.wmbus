@@ -79,6 +79,7 @@ class AMBER_WMBUS {
 			afield: a_field,
 			afield_id: a_field_id,
 			afield_type: a_field_type,
+			afield_ver: a_field_ver,
 			data: data.slice(i)
 		};
 
