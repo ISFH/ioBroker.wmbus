@@ -71,6 +71,7 @@ class WMBUS_DECODER {
 			TL_BLOCK_SIZE: 10,
 			// Link Layer block size
 			LL_BLOCK_SIZE: 16,
+			BLOCK_SIZE: 16,
 			// size of CRC in bytes
 			CRC_SIZE: 2,
 			FRAME_B_LENGTH: 129,
@@ -877,6 +878,18 @@ class WMBUS_DECODER {
 		this.alreadyDecrypted = false;
 
 	} // constructor end
+
+	removeCRC(data) {
+		let out = data.slice(0, this.constant.BLOCK_SIZE);
+		let offset = this.constant.BLOCK_SIZE + this.constant.CRC_SIZE;
+		while ((offset + this.constant.BLOCK_SIZE + this.constant.CRC_SIZE) < data.length) {
+			out = Buffer.concat([out, data.slice(offset, offset + this.constant.BLOCK_SIZE)]);
+			offset += this.constant.BLOCK_SIZE + this.constant.CRC_SIZE;
+		}
+
+		out = Buffer.concat([out, data.slice(offset, data.length - this.constant.CRC_SIZE)]);
+		return out;
+	}
 
 	formatDate(date, format) {
         function pad(num) {
@@ -1825,7 +1838,7 @@ class WMBUS_DECODER {
 				this.decrypted = 0;
 
 				if (this.aeskey) {
-						let encrypted_length = this.config.encrypted_blocks * 16;
+						let encrypted_length = this.config.encrypted_blocks * this.constant.BLOCK_SIZE;
 						this.logger.debug("encrypted payload: " + applayer.slice(offset, offset+encrypted_length).toString('hex'));
 						if (this.config.mode == 5) {
 							payload = Buffer.concat([this.decrypt(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
@@ -1936,6 +1949,11 @@ class WMBUS_DECODER {
 		} else if (typeof key === 'function') {
 			callback = key;
 			key = undefined;
+		}
+
+		let removeCRC = (typeof ll.withCRC !== 'undefined' ? ll.withCRC : false);
+		if (removeCRC) {
+			applayer = this.removeCRC(applayer);
 		}
 
 		this.errorcode = this.constant.ERR_NO_ERROR;
