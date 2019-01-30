@@ -1,6 +1,6 @@
 /*
  *
-# vim: noet ci pi sts=0 sw=4 ts=4 
+# vim: noet ci pi sts=0 sw=4 ts=4
  * ported from FHEM WMBus.pm # $Id: WMBus.pm 8659 2015-05-30 14:41:28Z kaihs $
  *           http://www.fhemwiki.de/wiki/WMBUS
  * extended by soef
@@ -94,9 +94,9 @@ class WMBUS_DECODER {
 			CI_TL_12: 0x8b,   // Transport layer from device, 12 Bytes
 
 			// see https://www.telit.com/wp-content/uploads/2017/09/Telit_Wireless_M-bus_2013_Part4_User_Guide_r14.pdf, 2.3.4
-			CI_ELL_2: 0x8c,   // Extended Link Layer, 2 Bytes
-			CI_ELL_8: 0x8d,   // Extended Link Layer, 8 Bytes 
-			CI_ELL_10: 0x8e,  // Extended Link Layer, 10 Bytes
+			CI_ELL_2: 0x8c,   // Extended Link Layer, 2 Bytes - OMS
+			CI_ELL_8: 0x8d,   // Extended Link Layer, 8 Bytes
+			CI_ELL_10: 0x8e,  // Extended Link Layer, 10 Bytes - OMS
 			CI_ELL_16: 0x8f,  // Extended Link Layer, 16 Bytes
 
 			CI_AFL: 0x90,     // Authentification and Fragmentation Layer, variable size
@@ -510,6 +510,14 @@ class WMBUS_DECODER {
 				unit    : '',
 				calcFunc: this.valueCalcNumeric,
 			},
+			//  Parameter set identification
+			VIF_PARAMETER_SET_IDENTIFICATION: {
+				typeMask: 0b01111111,
+				expMask : 0b00000000,
+				type    : 0b00001011,
+				bias    : 0,
+				unit    : ''
+			},
 			//  Model / Version
 			VIF_MODEL_VERSION: {
 				typeMask: 0b01111111,
@@ -861,7 +869,7 @@ class WMBUS_DECODER {
 			0b11: 'Value during error state',
 		};
 
-		// not all CRC related code is not ported !!!
+		// not all CRC related code is ported !!!
 		this.crc_size = this.constant.CRC_SIZE;
 		this.errorcode = this.constant.ERR_NO_ERROR;
 		this.errormsg = '';
@@ -912,7 +920,7 @@ class WMBUS_DECODER {
 		let date = new Date(year, month-1, day);
 		return this.formatDate(date, 'YYYY-MM-DD');
 	}
-	
+
 	valueCalcDateTime(value, dataBlock) {
 		// min: UI6 [1 to 6] <0 to 59>
 		// hour: UI5 [9 to13] <0 to 23>
@@ -1010,27 +1018,46 @@ class WMBUS_DECODER {
 
 	decodeConfigword(cw) {
 		this.config = {};
-		// mode 5
-		this.config.bidirectional    = (cw & 0b1000000000000000) >> 15; /* mode 5 */
-		this.config.content          = (cw & 0b1100000000000000) >> 14; /* mode 7 */
-		this.config.accessability    = (cw & 0b0100000000000000) >> 14; /* mode 5 */
-		this.config.synchronous      = (cw & 0b0010000000000000) >> 13; /* mode 5 */
-		this.config.mode             = (cw & 0b0001111100000000) >> 8;
-		this.config.encrypted_blocks = (cw & 0b0000000011110000) >> 4;  /* mode 5 + 7 */
-		this.config.encrypted_bytes  = (cw & 0b0000000011111111) >> 4;  /* mode 13 */
-		this.config.content          = (cw & 0b0000000000001100) >> 2;  /* mode 5 */
-		this.config.hop_counter      = (cw & 0b0000000000000011);       /* mode 5 */
+
+		this.config.mode = (cw & 0b0001111100000000) >> 8;
+		switch (this.config.mode) {
+			case 0:
+			case 5:
+				this.config.bidirectional    = (cw & 0b1000000000000000) >> 15; /* mode 5 */
+				this.config.accessability    = (cw & 0b0100000000000000) >> 14; /* mode 5 */
+				this.config.synchronous      = (cw & 0b0010000000000000) >> 13; /* mode 5 */
+				                                  /* 0b0001111100000000 - mode */
+				this.config.encrypted_blocks = (cw & 0b0000000011110000) >> 4;  /* mode 5 + 7 */
+				this.config.content          = (cw & 0b0000000000001100) >> 2;  /* mode 5 */
+				this.config.hop_counter      = (cw & 0b0000000000000011);       /* mode 5 */
+				break;
+			case 7:
+				this.config.content          = (cw & 0b1100000000000000) >> 14; /* mode 7 + 13 */
+				                                  /* 0b0010000000000000 - reserved for counter size */
+												  /* 0b0001111100000000 - mode */
+				this.config.encrypted_blocks = (cw & 0b0000000011110000) >> 4;  /* mode 5 + 7 */
+				                                  /* 0b0000000000001111 - reserved for counter index */
+				break;
+			case 13:
+				this.config.content          = (cw & 0b1100000000000000) >> 14; /* mode 7 + 13 */
+				                                  /* 0b0010000000000000 - reserved */
+												  /* 0b0001111100000000 - mode */
+				this.config.encrypted_bytes  =  cw & 0b0000000011111111;  /* mode 13 */
+				break;
+			default:
+				this.logger.debug("Warning unknown security mode: " + this.config.mode);
+		}
 	}
-	
+
 	decodeConfigwordExt(cwe) {
 		if (this.config.mode == 7) {
 			                          /* 0b10000000 - reserved
 			                             0b01000000 - reserved for version */
-			this.config.kdf_sel = (cwe & 0b00110000) >> 4; 
+			this.config.kdf_sel = (cwe & 0b00110000) >> 4;
 			this.config.keyid   =  cwe & 0b00001111;
 			return;
 		}
-		
+
 		if (this.config.mode == 13) {
 			                            /* 0b11110000 - reserved */
 			this.config.proto_type = cwe & 0b00001111;
@@ -1047,20 +1074,17 @@ class WMBUS_DECODER {
 	}
 
 	findVIF(vif, vifInfoRef, dataBlockRef) {
-		let bias;
-
 		if (typeof vifInfoRef !== 'undefined') {
 			for (let vifType in vifInfoRef) {
 				//this.logger.debug('vifType ' + vifType + ' VIF ' + vif + ' typeMask ' + vifInfoRef[vifType].typeMask + ' type ' + vifInfoRef[vifType].type);
 				if ((vif & vifInfoRef[vifType].typeMask) == vifInfoRef[vifType].type) {
 					this.logger.debug('match vifType ' + vifType);
-					bias = vifInfoRef[vifType].bias;
 					dataBlockRef.exponent = vif & vifInfoRef[vifType].expMask;
 
 					dataBlockRef.type = vifType;
 					dataBlockRef.unit = vifInfoRef[vifType].unit;
-					if ((typeof dataBlockRef.exponent !== 'undefined') && (typeof bias !== 'undefined')) { // is this correct???
-						dataBlockRef.valueFactor = Math.pow(10, (dataBlockRef.exponent + bias))
+					if ((typeof dataBlockRef.exponent !== 'undefined') && (typeof vifInfoRef[vifType].bias !== 'undefined')) { // is this correct???
+						dataBlockRef.valueFactor = Math.pow(10, (dataBlockRef.exponent + vifInfoRef[vifType].bias))
 					} else {
 						dataBlockRef.valueFactor = 1;
 					}
@@ -1068,7 +1092,7 @@ class WMBUS_DECODER {
 						dataBlockRef.calcFunc = vifInfoRef[vifType].calcFunc.bind(this);
 					}
 
-					this.logger.debug('type ' + dataBlockRef.type + ' bias ' + bias + ' exp ' + dataBlockRef.exponent + ' valueFactor ' + dataBlockRef.valueFactor + ' unit ' + dataBlockRef.unit);
+					this.logger.debug('type ' + dataBlockRef.type + ' bias ' + vifInfoRef[vifType].bias + ' exp ' + dataBlockRef.exponent + ' valueFactor ' + dataBlockRef.valueFactor + ' unit ' + dataBlockRef.unit);
 					return 1;
 				}
 			}
@@ -1078,106 +1102,106 @@ class WMBUS_DECODER {
 		return 1;
 	}
 
-	decodeValueInformationBlock(vib, dataBlockRef) {
-		let offset = 0;
+	decodeValueInformationBlock(vib, offset, dataBlockRef) {
+		let offsetStart = offset;
 		let vif;
 		let vifInfoRef;
 		let vifExtension = 0;
 		let vifExtNo = 0;
-		let isExtension;
 		let dataBlockExt;
 		let VIFExtensions = [];
-		let analyzeVIF = 1;
+		let analyzeVIF = true;
+		let done = false;
+		let isExtension = 0;
 
 		dataBlockRef.type = '';
 		// The unit and multiplier is taken from the table for primary VIF
 		vifInfoRef = this.VIFInfo;
 
-		EXTENSION:
-			while (1) {
-				if (offset >= vib.length) {
-					this.logger.debug('Warning: vib buffer was exceed!');
+		//vif = vib[offset++];
+		//isExtension = vif & this.constant.VIF_EXTENSION_BIT;
+
+		do
+		{
+			if (offset >= vib.length) {
+				this.logger.debug("Warning: no data but VIB extension bit still set!");
+				break;
+			}
+
+			vif = vib[offset++];
+			isExtension = vif & this.constant.VIF_EXTENSION_BIT;
+
+			if (!isExtension) {
+				break;
+			}
+
+			vifExtension = vif;
+			vif &= ~this.constant.VIF_EXTENSION_BIT;
+
+			vifExtNo++;
+			if (vifExtNo > 10) {
+				dataBlockRef.errormsg = 'too many VIFE';
+				dataBlockRef.errorcode = this.constant.ERR_TOO_MANY_VIFE;
+				this.logger.error(dataBlockRef.errormsg);
+				break;
+			}
+
+			switch (vif) {
+				case 0x7B:
+					vifInfoRef = this.VIFInfo_FB;
 					break;
-				}
-				vif = vib[offset++];
-
-				isExtension = vif & this.constant.VIF_EXTENSION_BIT;
-				this.logger.debug('vif: ' + vif.toString(16) + ' isExtension ' + isExtension);
-
-				// Is this an extension?
-				if (!isExtension) {
+				case 0x7C:
+					// Plaintext VIF
+					let len = vib[offset++];
+					dataBlockRef.type = "see unit";
+					dataBlockRef.unit = vib.toString('ascii', offset, offset+len);
+					offset += len;
+					analyzeVIF = false;
+					done = true;
 					break;
-				}
-
-				// yes, process extension
-
-				vifExtNo++;
-				if (vifExtNo > 10) {
-					dataBlockRef.errormsg = 'too many VIFE';
-					dataBlockRef.errorcode = this.constant.ERR_TOO_MANY_VIFE;
-					this.logger.error(dataBlockRef.errormsg);
+				case 0x7D:
+					vifInfoRef = this.VIFInfo_FD;
 					break;
-				}
+				case 0x7F:
+					if (this.link_layer.manufacturer === 'ESY') {
+						// Easymeter
+						vif = vib[offset++];
+						vifInfoRef = this.VIFInfo_ESY;
+					} else if (this.link_layer.manufacturer === 'KAM') {
+						// Kamstrup
+						vif = vib[offset++];
+						vifInfoRef = this.VIFInfo_KAM;
+					} else {
+						// manufacturer specific data, can't be interpreted
+						dataBlockRef.type = this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC;
+						dataBlockRef.unit = "";
+						analyzeVIF = false;
+					}
+					done = true;
+				default:
+					// enhancement of VIFs other than $FD and $FB (see page 84ff.)
+					this.logger.debug("other extension");
+					dataBlockExt = {};
+					if (this.link_layer.manufacturer === 'ESY') {
+						vifInfoRef = this.VIFInfo_ESY;
+						dataBlockExt.value = vib[offsetStart + 2] * 100;
+					} else {
+						dataBlockExt.value = vif;
+						vifInfoRef = this.VIFInfo_other;
+					}
 
-				// switch to extension codes
-				vifExtension = vif;
-				vif &= ~this.constant.VIF_EXTENSION_BIT;
-				this.logger.debug('vif without extension: ' + vif.toString(16));
-				switch (vif) {
-					case 0x7D:
-						vifInfoRef = this.VIFInfo_FD;
-						break;
-					case 0x7B:
-						vifInfoRef = this.VIFInfo_FB;
-						break;
-					case 0x7C:
-						// Plaintext VIF
-						let vifLength = vib[offset++];
-						dataBlockRef.type = "see unit";
-						dataBlockRef.unit = vib.toString('ascii', offset, offset+vifLength); //this.unpack('C' + vifLength, vib.substr(offset, vifLength));
-						offset += vifLength;
-						analyzeVIF = 0;
-						break EXTENSION;
-					case 0x7F:
-						if (this.link_layer.manufacturer === 'ESY') {
-							// Easymeter
-							vif = vib[offset++];
-							vifInfoRef = this.VIFInfo_ESY;
-						} else if (this.link_layer.manufacturer === 'KAM') {
-							// Kamstrup
-							vif = vib[offset++];
-							vifInfoRef = this.VIFInfo_KAM;
-						} else {
-							// manufacturer specific data, can't be interpreted
-							dataBlockRef.type = this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC;
-							dataBlockRef.unit = "";
-							analyzeVIF = 0;
-						}
-						break EXTENSION;
-					default:
-						// enhancement of VIFs other than $FD and $FB (see page 84ff.)
-						this.logger.debug("other extension");
-						dataBlockExt = {};
-						if (this.link_layer.manufacturer === 'ESY') {
-							vifInfoRef = this.VIFInfo_ESY;
-							dataBlockExt.value = vib[2] * 100;
-						} else {
-							dataBlockExt.value = vif;
-							vifInfoRef = this.VIFInfo_other;
-						}
+					if (this.findVIF(vif, vifInfoRef, dataBlockExt)) {
+						VIFExtensions.push(dataBlockExt);
+					} else {
+						dataBlockRef.type = 'unknown';
+						dataBlockRef.errormsg = "unknown VIFE " + vifExtension.toString(16) + " at offset " + (offset - 1);
+						dataBlockRef.errorcode = this.constant.ERR_UNKNOWN_VIFE;
+						this.logger.error(dataBlockRef.errormsg);
+					}
+					break;
+			}
 
-						if (this.findVIF(vif, vifInfoRef, dataBlockExt)) {
-							VIFExtensions.push(dataBlockExt);
-						} else {
-							dataBlockRef.type = 'unknown';
-							dataBlockRef.errormsg = "unknown VIFE " + vifExtension.toString(16) + " at offset " + (offset - 1);
-							dataBlockRef.errorcode = this.constant.ERR_UNKNOWN_VIFE;
-							this.logger.error(dataBlockRef.errormsg);
-						}
-						break;
-				}
-				if (!isExtension) break; // unnecessary?
-			} // while end
+		} while (!done && isExtension);
 
 		if (analyzeVIF) {
 			if (this.findVIF(vif, vifInfoRef, dataBlockRef) == 0) {
@@ -1197,11 +1221,9 @@ class WMBUS_DECODER {
 		return offset;
 	}
 
-	decodeDataInformationBlock (dib, dataBlockRef) {
-		let dif = dib[0];
+	decodeDataInformationBlock (dib, offset, dataBlockRef) {
+		let dif = dib[offset++];
 		let difExtNo = 0;
-		let offset = 1;
-		let isExtension = dif & this.constant.DIF_EXTENSION_BIT;
 
 		dataBlockRef.tariff = 0;
 		dataBlockRef.devUnit = 0;
@@ -1212,32 +1234,26 @@ class WMBUS_DECODER {
 
 		this.logger.debug("dif " + dif.toString(16) + " storage " + dataBlockRef.storageNo);
 
-		while (isExtension) {
-			//correct?
+		while (dif & this.constant.DIF_EXTENSION_BIT) {
 			if (offset >= dib.length) {
+				this.logger.debug("Warning: no data but DIF extension bit still set!");
 				break;
 			}
+
 			dif = dib[offset++];
 
-			//(when is dif 'undefined' ???)
-			//was this:
-			//dif = dib.charCodeAt(offset);
-			//if (dif == undefined) break;
-			//offset++;
-
-			isExtension = dif & this.constant.DIF_EXTENSION_BIT;
-			difExtNo++;
-			if (difExtNo > 10) {
+			if (difExtNo > 9) {
 				dataBlockRef.errormsg = 'too many DIFE';
 				dataBlockRef.errorcode = this.constant.ERR_TOO_MANY_DIFE;
 				this.logger.error(dataBlockRef.errormsg);
 				break;
 			}
 
-			dataBlockRef.storageNo |= (dif & 0b00001111) << (difExtNo * 4) + 1;
-			dataBlockRef.tariff    |= ((dif & 0b00110000 >> 4)) << ((difExtNo - 1) * 2);
-			dataBlockRef.devUnit   |= ((dif & 0b01000000 >> 6)) << (difExtNo - 1);
+			dataBlockRef.storageNo |=  (dif & 0b00001111)       << (difExtNo * 4) + 1;
+			dataBlockRef.tariff    |= ((dif & 0b00110000 >> 4)) << (difExtNo * 2);
+			dataBlockRef.devUnit   |= ((dif & 0b01000000 >> 6)) <<  difExtNo;
 			this.logger.debug("dife " + dif.toString(16) + " extno " + difExtNo + " storage " + dataBlockRef.storageNo);
+			difExtNo++;
 		}
 
 		this.logger.debug("in DIF: datafield " + dataBlockRef.dataField.toString(16));
@@ -1245,9 +1261,9 @@ class WMBUS_DECODER {
 		return offset;
 	}
 
-	decodeDataRecordHeader(drh, dataBlockRef) {
-		let offset = this.decodeDataInformationBlock(drh, dataBlockRef);
-		offset += this.decodeValueInformationBlock(drh.slice(offset), dataBlockRef);
+	decodeDataRecordHeader(drh, offset, dataBlockRef) {
+		offset = this.decodeDataInformationBlock(drh, offset, dataBlockRef);
+		offset = this.decodeValueInformationBlock(drh, offset, dataBlockRef);
 		this.logger.debug("in DRH: type " + dataBlockRef.type);
 		return offset;
 	}
@@ -1278,9 +1294,9 @@ class WMBUS_DECODER {
 					}
 				}
 
-				offset += this.decodeDataRecordHeader(payload.slice(offset), dataBlock);
+				offset = this.decodeDataRecordHeader(payload, offset, dataBlock);
 				this.logger.debug("No. " + dataBlockNo + " type " + dataBlock.dataField.toString(16) + " at offset " + (offset - 1));
-				
+
 				try {
 					switch (dataBlock.dataField) {
 						case this.constant.DIF_NONE:
@@ -1456,16 +1472,17 @@ class WMBUS_DECODER {
 			msg.writeUInt32LE(this.link_layer.afield.readUInt32LE(0), 5);
 		}
 		let cmac = aesCmac(key, msg, {returnAsBuffer: true});
-		return this.decrypt(encrypted, cmac, initVector);
+		return this.decrypt(encrypted, cmac, initVector, 'aes-128-cbc');
 	}
 
-	decodeAFL(afl) {
-		let offset = 0;
+	decodeAFL(data, offset) {
+		// reset afl object
+		this.afl = {};
+		this.afl.ci = data[offset++];
+		this.afl.afll = data[offset++];
+		this.logger.debug("AFL AFLL " + this.afl.afll);
 
-		if (typeof this.afl === 'undefined') {
-			this.afl = {};
-		}
-		this.afl.fcl = afl.readUInt16LE(offset);
+		this.afl.fcl = data.readUInt16LE(offset);
 		offset += 2;
 		                                 /* 0b1000000000000000 - reserved */
 		this.afl.fcl_mf   = (this.afl.fcl & 0b0100000000000000) != 0; /* More fragments: 0 last fragment; 1 more following */
@@ -1479,27 +1496,27 @@ class WMBUS_DECODER {
 
 		if (this.afl.fcl_mclp) {
 			// AFL Message Control Field (AFL.MCL)
-			this.afl.mcl = afl[offset++];
+			this.afl.mcl = data[offset++];
 			                                 /* 0b10000000 - reserved */
 			this.afl.mcl_mlmp = (this.afl.mcl & 0b01000000) != 0; /* Message Length Field present in message */
 			this.afl.mcl_mcmp = (this.afl.mcl & 0b00100000) != 0; /* Message Counter Field present in message */
 			this.afl.mcl_kimp = (this.afl.mcl & 0b00010000) != 0; /* Key Information Field present in message */
 			this.afl.mcl_at   = (this.afl.mcl & 0b00001111); /* Authentication-Type */
 		}
-		
+
 		if (this.afl.fcl_kip) {
 			// AFL Key Information Field (AFL.KI)
-			this.afl.ki = afl.readUInt16LE(offset);
+			this.afl.ki = data.readUInt16LE(offset);
 			offset += 2;
 			this.afl.ki_key_version   = (this.afl.ki & 0b1111111100000000) >> 8;
 			                                        /* 0b0000000011000000 - reserved */
 			this.afl.ki_kdf_selection = (this.afl.ki & 0b0000000000110000) >> 4;
 			this.afl.ki_key_id        = (this.afl.ki & 0b0000000000001111);
 		}
-		
+
 		if (this.afl.fcl_mcrp) {
 			// AFL Message Counter Field (AFL.MCR)
-			this.afl.mcr = afl.readUInt32LE(offset);
+			this.afl.mcr = data.readUInt32LE(offset);
 			this.logger.debug("AFL MC " + this.afl.mcr);
 			offset += 4;
 		}
@@ -1510,23 +1527,104 @@ class WMBUS_DECODER {
 			let mac_len = 0;
 			if (this.afl.mcl_at == 4) {
 				mac_len = 4;
-				//this.afl.mac = afl.readUInt32BE(offset);
 			} else if (this.afl.mcl_at == 5) {
 				mac_len = 8;
-				//this.afl.mac = (afl.readUInt32BE(offset) << 32) | (afl.readUInt32BE(offset+4));
 			} else if (this.afl.mcl_at == 6) {
 				mac_len = 12;
 			} else if (this.afl.mcl_at == 7) {
 				mac_len = 16;
 			}
-			this.afl.mac = afl.slice(offset, offset+mac_len);
+			this.afl.mac = data.slice(offset, offset+mac_len);
 			offset += mac_len;
 			this.logger.debug("AFL MAC " + this.afl.mac.toString('hex'));
 		}
 		if (this.afl.fcl_mlp) {
 			// AFL Message Length Field (AFL.ML)
-			this.afl.ml = afl.readUInt16LE(offset);
+			this.afl.ml = data.readUInt16LE(offset);
 			offset += 2;
+		}
+
+		return offset;
+	}
+
+	decodeELL(data, offset) {
+		// reset ell object
+		this.ell = {}
+		this.ell.ci = data[offset++];
+
+		// common to all headers
+		this.ell.communication_control = data[offset++];
+		this.ell.access_number = data[offset++];
+
+		switch (this.ell.ci) {
+			case this.constant.CI_ELL_2: // OMS
+				// nothing more to do here
+			break;
+			case this.constant.CI_ELL_8:
+				this.ell.session_number = data.readUInt32LE(offset);
+				offset += 4;
+				// payload CRC is part (encrypted) payload - so deal with it later
+			break;
+			case this.constant.CI_ELL_10: // OMS
+			case this.constant.CI_ELL_16:
+				this.ell.manufacturer = data.readUInt16LE(offset);
+				offset += 2;
+				this.ell.address = data.slice(offset, offset+6);
+				offset += 6;
+			break;
+			default:
+				this.logger.debug("Warning: unknown extended link layer CI: 0x" + this.ell.ci.toString(16));
+		}
+
+		// untested!!!
+		if (this.ell.ci === this.constant.CI_ELL_16) {
+			this.ell.session_number = data.readUInt32LE(offset);
+			offset += 4;
+			// payload CRC is part (encrypted) payload - so deal with it later
+
+			// parse session number
+			this.ell.session_number_enc     = (this.ell.session_number & 0b11100000000000000000000000000000) >> 29;
+			this.ell.session_number_time    = (this.ell.session_number & 0b00011111111111111111111111110000) >> 4;
+			this.ell.session_number_session =  this.ell.session_number & 0b00000000000000000000000000001111;
+			this.isEncrypted = this.ell.session_number_enc != 0;
+			this.decrypted = 0;
+
+			if (this.isEncrypted) {
+				if (this.aeskey) {
+					// AES IV
+					// M-field, A-field, CC, SN, 00, 0000
+					let initVector = Buffer.concat([
+						Buffer.alloc(2),
+						(typeof this.ell.address !== 'undefined' ? this.ell.address : this.link_layer.afield),
+						Buffer.alloc(8)
+					]);
+					initVector.writeUInt16LE((typeof this.ell.manufacturer !== 'undefined' ? this.ell.manufacturer : this.link_layer.mfield));
+					initVector[8] = this.ell.communication_control;
+					initVector.writeUInt32LE(this.ell.session_number, 9);
+					data = this.decrypt(data.slice(offset), this.aeskey, initVector, 'aes-128-ctr');
+				} else {
+					this.errormsg = 'encrypted message and no aeskey provided';
+					this.errorcode = this.constant.ERR_NO_AESKEY;
+					this.logger.error(this.errormsg);
+					return 0;
+				}
+
+				this.ell.crc = data.readUInt16(0);
+				offset += 2;
+				// PayloadCRC is a cyclic redundancy check covering the remainder of the frame (excluding the CRC fields)
+				// payloadCRC is also encrypted
+				let crc = this.crc.crc(data.slice(2, this.transport_layer.lfield - 20 + 2));
+				if (this.ell.crc != crc) {
+					this.logger.debug("crc " + this.ell.crc.toString(16) + ", calculated " + crc.toString(16));
+					this.errormsg = "Payload CRC check failed on ELL" + (this.isEncrypted ? ", wrong AES key?" : "");
+					this.errorcode = this.constant.ERR_CRC_FAILED;
+					this.logger.error(this.errormsg);
+					return 0;
+				} else {
+					this.decrypted = 1;
+				}
+				offset = 2; // skip PayloadCRC
+			}
 		}
 
 		return offset;
@@ -1539,134 +1637,56 @@ class WMBUS_DECODER {
 		}
 
 		let offset = 0;
+		let current_ci = applayer[offset];
 		this.application_layer = {};
-		this.ell = {};
-		this.application_layer.cifield = applayer[offset++];
 
-		switch (this.application_layer.cifield) {
-			case this.constant.CI_ELL_2: // Extended Link Layer
-				this.ell.cc = applayer[offset++];
-				this.ell.access_no = applayer[offset++];
-			break;
-			case this.constant.CI_ELL_8: // Extended Link Layer, payload CRC is part of (encrypted) payload
-				this.ell.cc = applayer[offset++];
-				this.ell.access_no = applayer[offset++];
-				this.ell.session_number = applayer.readUInt32LE(offset);
-				offset += 4;
-			break;
-			case this.constant.CI_ELL_10: // Extended Link Layer
-				this.ell.cc = applayer[offset++];
-				this.ell.access_no = applayer[offset++];
-				this.ell.m2 = applayer.readUInt16LE(offset);
-				offset += 2;
-				this.ell.a2 = applayer.slice(offset, offset+6);
-				offset += 6;
-			break;
-			case this.constant.CI_ELL_16: // Extended Link Layer, payload CRC is part of (encrypted) payload
-				this.ell.cc = applayer[offset++];
-				this.ell.access_no = applayer[offset++];
-				this.ell.m2 = applayer.readUInt16LE(offset);
-				offset += 2;
-				this.ell.a2 = applayer.slice(offset, offset+6);
-				offset += 6;
-				this.ell.session_number = applayer.readUInt32LE(offset);
-				offset += 4;
-			break;
+		if ((current_ci >= this.constant.CI_ELL_2) && (current_ci <= this.constant.CI_ELL_16)) {
+			// Extended Link Layer
+			this.logger.debug("Extended Link Layer");
+			offset = this.decodeELL(applayer, offset);
+			current_ci = applayer[offset];
 		}
 
-		let payload;
+		if (current_ci == this.constant.CI_AFL) {
+			// Authentification and Fragmentation Layer
+			this.logger.debug("Authentification and Fragmentation Layer");
+			offset = this.decodeAFL(applayer, offset);
+			current_ci = applayer[offset];
 
-		if (typeof this.ell.session_number !== 'undefined') {
-			this.ell.session_number_enc     = (this.ell.session_number & 0b11100000000000000000000000000000) >> 29;
-			this.ell.session_number_time    = (this.ell.session_number & 0b00011111111111111111111111110000) >> 4;
-			this.ell.session_number_session =  this.ell.session_number & 0b00000000000000000000000000001111;
-			this.isEncrypted = this.ell.session_number_enc != 0;
-			this.decrypted = 0;
-
-			if (this.isEncrypted) {
-				if (this.aeskey) {
-					// AES IV
-					// M-field, A-field, CC, SN, 00, 0000
-					let initVector = Buffer.concat([Buffer.alloc(2), this.link_layer.afield, Buffer.alloc(8)]);
-					initVector.writeUInt16LE(this.link_layer.mfield);
-					initVector[8] = this.ell.cc;
-					initVector.writeUInt32LE(this.ell.session_number, 9);
-					payload = this.decrypt(applayer.slice(offset), this.aeskey, initVector, 'aes-128-ctr');
-				} else {
-					this.errormsg = 'encrypted message and no aeskey provided';
-					this.errorcode = this.constant.ERR_NO_AESKEY;
-					this.logger.error(this.errormsg);
-					return 0;
-				}
-
-				this.ell.crc = payload.readUInt16(0);
-				offset += 2;
-				// PayloadCRC is a cyclic redundancy check covering the remainder of the frame (excluding the CRC fields)
-				// payloadCRC is also encrypted
-				let crc = this.crc.crc(payload.slice(2, this.transport_layer.lfield - 20 + 2));
-				if (this.ell.crc != crc) {
-					this.logger.debug("crc " + this.ell.crc.toString(16) + ", calculated " + crc.toString(16));
-					this.errormsg = "Payload CRC check failed on ELL" + (this.isEncrypted ? ", wrong AES key?" : "");
-					this.errorcode = this.constant.ERR_CRC_FAILED;
-					this.logger.error(this.errormsg);
-					return 0;
-				} else {
-					this.decrypted = 1;
-				}
-				applayer = payload;
-				offset = 2; // skip PayloadCRC
+			if (this.afl.fcl_mf) {
+				this.errormsg = "fragmented messages are not yet supported";
+				this.errorcode = this.constant.ERR_FRAGMENT_UNSUPPORTED;
+				this.logger.error(this.errormsg);
+				return 0;
 			}
-		}
-
-		if (offset > 1) {
-			applayer = applayer.slice(offset);
-			offset = 0;
-			this.application_layer.cifield = applayer[offset++];
-			if (this.application_layer.cifield == this.constant.CI_AFL) {
-				if (typeof this.afl === 'undefined') {
-					this.afl = {};
-				}
-				// Authentification and Fragmentation Layer
-				this.afl.afll = applayer[offset++];
-				this.logger.debug("AFL AFLL " + this.afl.afll);;
-				this.decodeAFL(applayer.slice(offset, offset + this.afl.afll));
-				offset += this.afl.afll;
-				if (this.afl.fcl_mf) {
-					this.errormsg = "fragmented messages are not yet supported";
-					this.errorcode = this.constant.ERR_FRAGMENT_UNSUPPORTED;
-					this.logger.error(this.errormsg);
-					return 0;
-				}
-			}
-		}
-
-		if (offset > 1) {
-			applayer = applayer.slice(offset);
-			offset = 0;
-			this.application_layer.cifield = applayer[offset++];
 		}
 
 		// initialize some fields
-		let config_field = 0;
-		let config_field_ext = 0;
 		this.application_layer.status = 0;
 		this.application_layer.statusstring = "";
 		this.application_layer.access_no = 0;
+		this.application_layer.cifield = current_ci;
 
-		switch (this.application_layer.cifield) {
+		offset++;
+
+		switch (current_ci) {
+			case this.constant.CI_RESP_0:
+				// no header - only M-Bus?
+				this.logger.debug("No header");
+				break;
+
 			case this.constant.CI_RESP_4:
 			case this.constant.CI_RESP_SML_4:
-				this.logger.debug("short header");
+				this.logger.debug("Short header");
 				this.application_layer.access_no = applayer[offset++];
 				this.application_layer.status = applayer[offset++];
-				config_field = applayer.readUInt16LE(offset);
+				this.decodeConfigword(applayer.readUInt16LE(offset));
 				offset += 2;
-				this.decodeConfigword(config_field);
 				if ((this.config.mode == 7) || (this.config.mode == 13)) {
-					config_field_ext = applayer[offset++];
-					this.decodeConfigwordExt(config_field_ext);
+					this.decodeConfigwordExt(applayer[offset++]);
 				}
 				break;
+
 			case this.constant.CI_RESP_12:
 			case this.constant.CI_RESP_SML_12:
 				this.logger.debug("Long header");
@@ -1678,21 +1698,16 @@ class WMBUS_DECODER {
 				this.application_layer.meter_dev = applayer[offset++];
 				this.application_layer.access_no = applayer[offset++];
 				this.application_layer.status = applayer[offset++];
-				config_field = applayer.readUInt16LE(offset);
+				this.decodeConfigword(applayer.readUInt16LE(offset));
 				offset += 2;
-				this.decodeConfigword(config_field);
 				if ((this.config.mode == 7) || (this.config.mode == 13)) {
-					config_field_ext = applayer[offset++];
-					this.decodeConfigwordExt(config_field_ext);
+					this.decodeConfigwordExt(applayer[offset++]);
 				}
-				this.application_layer.meter_id = this.application_layer.meter_id.toString().padStart(8, '0');
+				//this.application_layer.meter_id = this.application_layer.meter_id.toString().padStart(8, '0');
 				this.application_layer.meter_devtypestring = this.validDeviceTypes[this.application_layer.meter_dev] || 'unknown';
 				this.application_layer.meter_manufacturer = this.manId2ascii(this.application_layer.meter_man).toUpperCase();
 				break;
-			case this.constant.CI_RESP_0:
-				// no header
-				this.logger.debug("No header");
-				break;
+
 			case 0x79:
 				this.logger.debug("MANUFACTURER header");
 				if (this.link_layer.manufacturer === 'KAM') {
@@ -1744,17 +1759,18 @@ class WMBUS_DECODER {
 					}
 					break;
 				}
+				// no break so unhandled manufacturer for CI 0x79 are treated as default too
 			default:
 				// unsupported
-				this.decodeConfigword(config_field);
-				this.errormsg = 'Unsupported CI Field ' + this.application_layer.cifield.toString(16) + ", remaining payload is " + applayer.toString('hex', offset);
+				this.errormsg = 'Unsupported CI Field ' + current_ci.toString(16) + ", remaining payload is " + applayer.toString('hex', offset);
 				this.errorcode = this.constant.ERR_UNKNOWN_CIFIELD;
 				this.logger.error(this.errormsg);
 				return 0;
 		}
-		this.application_layer.statusstring = this.state2string(this.application_layer.status).join(", ");
-		//this.decodeConfigword(cw);
 
+		this.application_layer.statusstring = this.state2string(this.application_layer.status).join(", ");
+
+		let payload;
 		this.encryptionMode = this.encryptionModes[this.config.mode];
 		switch (this.config.mode) {
 			case 0: // no encryption
@@ -1766,6 +1782,7 @@ class WMBUS_DECODER {
 			case 5: // data is encrypted with AES 128, dynamic init vector
 					// decrypt data before further processing
 			case 7: // ephemeral key is used (see 9.2.4)
+
 				// data got decrypted by gateway or similar
 				if (this.alreadyDecrypted) {
 					payload = applayer.slice(offset);
@@ -1784,7 +1801,7 @@ class WMBUS_DECODER {
 							payload = Buffer.concat([this.decrypt_mode7(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
 						}
 						this.logger.debug("decrypted payload " + payload.toString('hex'));
-						if (payload.readUInt16BE(0) == 0x2f2f) {
+						if (payload.readUInt16LE(0) == 0x2f2f) {
 							this.decrypted = 1;
 						} else {
 							// Decryption verification failed
@@ -1799,10 +1816,6 @@ class WMBUS_DECODER {
 					this.logger.error(this.errormsg);
 					return 0;
 				}
-				break;
-				
-			case 7:
-			
 				break;
 
 			default:
@@ -1891,12 +1904,12 @@ class WMBUS_DECODER {
 		} else if (typeof key === 'function') {
 			callback = key;
 			key = undefined;
-		}			
-		
+		}
+
 		this.errorcode = this.constant.ERR_NO_ERROR;
 		this.errormsg = '';
 		this.alreadyDecrypted = (typeof ll.decrypted !== 'undefined' ? ll.decrypted : false);
-		
+
 		if (typeof key !== 'undefined') {
 			this.aeskey = key;
 		}
@@ -1909,7 +1922,7 @@ class WMBUS_DECODER {
 			callback && callback({message: this.errormsg, code: this.errorcode});
 		}
 	}
-	
+
 	collectData() {
 		let result = {};
 		let address = Buffer.concat([Buffer.alloc(2), this.link_layer.afield]);
@@ -1926,7 +1939,7 @@ class WMBUS_DECODER {
 			Address: address.toString('hex')
 		}
 		result.dataRecord = this.datablocks;
-		
+
 		return result;
 	}
 
