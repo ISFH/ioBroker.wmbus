@@ -1445,10 +1445,20 @@ class WMBUS_DECODER {
 		let initVector;
 		if (typeof iv === 'undefined') {
 			initVector = Buffer.concat([Buffer.alloc(2), this.link_layer.afield, Buffer.alloc(8, this.application_layer.access_no)]);
-			initVector.writeUInt16LE(this.link_layer.mfield);
+			if (typeof this.application_layer.meter_id !== 'undefined') {
+				initVector.writeUInt32LE(this.application_layer.meter_id, 2);
+				initVector.writeUInt8(this.application_layer.meter_vers, 6);
+				initVector.writeUInt8(this.application_layer.meter_dev, 7);
+			}
+			if (typeof this.application_layer.meter_man !== 'undefined') {
+				initVector.writeUInt16LE(this.application_layer.meter_man);
+			} else {
+				initVector.writeUInt16LE(this.link_layer.mfield);
+			}
 		} else {
 			initVector = iv;
 		}
+		this.logger.debug("IV: " + initVector.toString('hex'));
 		algorithm = (typeof algorithm === 'undefined' ? 'aes-128-cbc' : algorithm);
 		const decipher = crypto.createDecipheriv(algorithm, key, initVector);
 		decipher.setAutoPadding(false);
@@ -1474,8 +1484,9 @@ class WMBUS_DECODER {
 		} else {
 			msg.writeUInt32LE(this.link_layer.afield.readUInt32LE(0), 5);
 		}
-		let cmac = aesCmac(key, msg, {returnAsBuffer: true});
-		return this.decrypt(encrypted, cmac, initVector, 'aes-128-cbc');
+		let kenc = aesCmac(key, msg, {returnAsBuffer: true});
+		this.logger.debug("Kenc: " + kenc.toString('hex'));
+		return this.decrypt(encrypted, kenc, initVector, 'aes-128-cbc');
 	}
 
 	decodeAFL(data, offset) {
@@ -1951,12 +1962,12 @@ class WMBUS_DECODER {
 
 		result.deviceInformation = {
 			AccessNumber: this.application_layer.access_no,
-            Id: this.link_layer.afield_id,
-            Manufacturer: this.link_layer.manufacturer,
-            Medium: this.link_layer.typestring,
+            Id: (typeof this.application_layer.meter_id !== 'undefined' ? this.application_layer.meter_id.toString(16) : this.link_layer.afield_id),
+            Manufacturer: (typeof this.application_layer.meter_manufacturer !== 'undefined' ? this.application_layer.meter_manufacturer : this.link_layer.manufacturer),
+            Medium: (typeof this.application_layer.meter_devtypestring !== 'undefined' ? this.application_layer.meter_devtypestring : this.link_layer.typestring),
 			Status: this.application_layer.status,
 			StatusString: this.application_layer.statusstring,
-			Version: this.link_layer.afield_ver,
+			Version: (typeof this.application_layer.meter_vers !== 'undefined' ?  this.application_layer.meter_vers : this.link_layer.afield_ver),
 			Address: address.toString('hex')
 		}
 		result.dataRecord = this.datablocks;
