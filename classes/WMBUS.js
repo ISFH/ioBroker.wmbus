@@ -1618,7 +1618,7 @@ class WMBUS_DECODER {
 				offset += 2;
 				// PayloadCRC is a cyclic redundancy check covering the remainder of the frame (excluding the CRC fields)
 				// payloadCRC is also encrypted
-				let crc = this.crc.crc(data.slice(2, this.link_layer.lfield - 20 + 2));
+				let crc = this.crc.crc(data.slice(2));
 				if (this.ell.crc != crc) {
 					this.logger.debug("crc " + this.ell.crc.toString(16) + ", calculated " + crc.toString(16));
 					this.errormsg = "Payload CRC check failed on ELL" + (this.isEncrypted ? ", wrong AES key?" : "");
