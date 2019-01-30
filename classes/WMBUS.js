@@ -1130,6 +1130,7 @@ class WMBUS_DECODER {
 
 			vif = vib[offset++];
 			isExtension = vif & this.constant.VIF_EXTENSION_BIT;
+			this.logger.debug('vif: ' + vif.toString(16) + ' isExtension ' + isExtension);
 
 			if (!isExtension) {
 				break;
@@ -1185,6 +1186,8 @@ class WMBUS_DECODER {
 					if (this.link_layer.manufacturer === 'ESY') {
 						vifInfoRef = this.VIFInfo_ESY;
 						dataBlockExt.value = vib[offsetStart + 2] * 100;
+					} else if (this.link_layer.manufacturer === 'KAM') {
+						vifInfoRef = this.VIFInfo_KAM;
 					} else {
 						dataBlockExt.value = vif;
 						vifInfoRef = this.VIFInfo_other;
@@ -1561,9 +1564,9 @@ class WMBUS_DECODER {
 				// nothing more to do here
 			break;
 			case this.constant.CI_ELL_8:
-				this.ell.session_number = data.readUInt32LE(offset);
-				offset += 4;
+				// session_number see below
 				// payload CRC is part (encrypted) payload - so deal with it later
+				break;
 			break;
 			case this.constant.CI_ELL_10: // OMS
 			case this.constant.CI_ELL_16:
@@ -1571,13 +1574,14 @@ class WMBUS_DECODER {
 				offset += 2;
 				this.ell.address = data.slice(offset, offset+6);
 				offset += 6;
+				// session_number see below
 			break;
 			default:
 				this.logger.debug("Warning: unknown extended link layer CI: 0x" + this.ell.ci.toString(16));
 		}
 
-		// untested!!!
-		if (this.ell.ci === this.constant.CI_ELL_16) {
+		// a little tested - what happens to CRC is still not clear
+		if ((this.ell.ci === this.constant.CI_ELL_16) || (this.ell.ci === this.constant.CI_ELL_8)){
 			this.ell.session_number = data.readUInt32LE(offset);
 			offset += 4;
 			// payload CRC is part (encrypted) payload - so deal with it later
@@ -1592,7 +1596,7 @@ class WMBUS_DECODER {
 			if (this.isEncrypted) {
 				if (this.aeskey) {
 					// AES IV
-					// M-field, A-field, CC, SN, 00, 0000
+					// M-field, A-field, CC, SN, (00, 0000 vs FN     BC ???)
 					let initVector = Buffer.concat([
 						Buffer.alloc(2),
 						(typeof this.ell.address !== 'undefined' ? this.ell.address : this.link_layer.afield),
@@ -1602,6 +1606,7 @@ class WMBUS_DECODER {
 					initVector[8] = this.ell.communication_control;
 					initVector.writeUInt32LE(this.ell.session_number, 9);
 					data = this.decrypt(data.slice(offset), this.aeskey, initVector, 'aes-128-ctr');
+					this.logger.debug("Dec: "+  data.toString('hex'));
 				} else {
 					this.errormsg = 'encrypted message and no aeskey provided';
 					this.errorcode = this.constant.ERR_NO_AESKEY;
@@ -1609,11 +1614,11 @@ class WMBUS_DECODER {
 					return 0;
 				}
 
-				this.ell.crc = data.readUInt16(0);
+				this.ell.crc = data.readUInt16LE(0);
 				offset += 2;
 				// PayloadCRC is a cyclic redundancy check covering the remainder of the frame (excluding the CRC fields)
 				// payloadCRC is also encrypted
-				let crc = this.crc.crc(data.slice(2, this.transport_layer.lfield - 20 + 2));
+				let crc = this.crc.crc(data.slice(2, this.link_layer.lfield - 20 + 2));
 				if (this.ell.crc != crc) {
 					this.logger.debug("crc " + this.ell.crc.toString(16) + ", calculated " + crc.toString(16));
 					this.errormsg = "Payload CRC check failed on ELL" + (this.isEncrypted ? ", wrong AES key?" : "");
@@ -1623,7 +1628,7 @@ class WMBUS_DECODER {
 				} else {
 					this.decrypted = 1;
 				}
-				offset = 2; // skip PayloadCRC
+				offset = data.slice(2); // skip PayloadCRC
 			}
 		}
 
@@ -1643,7 +1648,13 @@ class WMBUS_DECODER {
 		if ((current_ci >= this.constant.CI_ELL_2) && (current_ci <= this.constant.CI_ELL_16)) {
 			// Extended Link Layer
 			this.logger.debug("Extended Link Layer");
-			offset = this.decodeELL(applayer, offset);
+			let ell_return = this.decodeELL(applayer, offset);
+			if (Buffer.isBuffer(ell_return)) {
+				applayer = ell_return;
+				offset = 0;
+			} else {
+				offset = ell_return;
+			}
 			current_ci = applayer[offset];
 		}
 
@@ -1666,6 +1677,7 @@ class WMBUS_DECODER {
 		this.application_layer.statusstring = "";
 		this.application_layer.access_no = 0;
 		this.application_layer.cifield = current_ci;
+		this.config = { mode: 0 };
 
 		offset++;
 
@@ -1723,6 +1735,15 @@ class WMBUS_DECODER {
 							Buffer.from([0x02, 0xFF, 0x20]), applayer.slice(5, 5+2), // info
 							Buffer.from([0x04, 0x13]), applayer.slice(7, 7+4),       // volume
 							Buffer.from([0x44, 0x13]), applayer.slice(11, 11+4)      // target volume
+						]);
+						offset = 0;
+					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x16, 0x44, 0x16]))) {
+						// Info, ???
+						// convert into full frame
+						applayer = Buffer.concat([
+							Buffer.from([0x02, 0xFF, 0x20]), applayer.slice(5, 5+2), // info
+							Buffer.from([0x04, 0x16]), applayer.slice(7, 7+4),       // ???
+							Buffer.from([0x44, 0x16]), applayer.slice(11, 11+4)      // ???
 						]);
 						offset = 0;
 					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x52, 0x3B]))) {
