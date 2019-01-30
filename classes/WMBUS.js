@@ -1485,7 +1485,7 @@ class WMBUS_DECODER {
 		return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 	}
 
-	decrypt_mode7(encrypted, key) {
+	decrypt_mode7(encrypted, key, tpl) {
 		// see 9.2.4, page 59
 		let initVector = Buffer.alloc(16, 0x00);
 		// KDF
@@ -1499,6 +1499,27 @@ class WMBUS_DECODER {
 		}
 		let kenc = aesCmac(key, msg, {returnAsBuffer: true});
 		this.logger.debug("Kenc: " + kenc.toString('hex'));
+
+		// MAC verification - could be skipped...
+		msg[0] = 0x01; // derivation constant
+		let kmac = aesCmac(key, msg, {returnAsBuffer: true});
+		this.logger.debug("Kmac: " + kmac.toString('hex'));
+
+		let len = 5 + (this.afl.fcl_mlp * 2);
+		msg = Buffer.alloc(len);
+		msg[0] = this.afl.mcl;
+		msg.writeUInt32LE(this.afl.mcr, 1);
+		if (this.afl.fcl_mlp) {
+			msg.writeUInt16LE(this.afl.ml, 5);
+		}
+		msg = Buffer.concat([msg, tpl, encrypted]);
+		let mac = aesCmac(kmac, msg, {returnAsBuffer: true});
+
+		this.logger.debug("MAC: " + mac.toString('hex'));
+		if (this.afl.mac.compare(mac.slice(0, 8)) !== 0) {
+			this.logger.debug("Warning: received MAC is incorrect. Corrupted data?");
+			this.logger.debug("MAC received:  " + this.afl.mac.toString('hex'));
+		}
 		return this.decrypt(encrypted, kenc, initVector, 'aes-128-cbc');
 	}
 
@@ -1703,6 +1724,7 @@ class WMBUS_DECODER {
 		this.application_layer.cifield = current_ci;
 		this.config = { mode: 0 };
 
+		let appStart = offset;
 		offset++;
 
 		switch (current_ci) {
@@ -1843,7 +1865,7 @@ class WMBUS_DECODER {
 						if (this.config.mode == 5) {
 							payload = Buffer.concat([this.decrypt(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
 						} else { // mode 7
-							payload = Buffer.concat([this.decrypt_mode7(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
+							payload = Buffer.concat([this.decrypt_mode7(applayer.slice(offset, offset+encrypted_length), this.aeskey, applayer.slice(appStart, offset)), applayer.slice(offset+encrypted_length)]);
 						}
 						this.logger.debug("decrypted payload " + payload.toString('hex'));
 						if (payload.readUInt16LE(0) == 0x2f2f) {
