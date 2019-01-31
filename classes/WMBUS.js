@@ -67,10 +67,9 @@ class WMBUS_DECODER {
 		this.crc = new CRC();
 
 		this.constant = {
-			// Transport Layer block size
-			TL_BLOCK_SIZE: 10,
-			// Link Layer block size
-			LL_BLOCK_SIZE: 16,
+			// Data Link Layer
+			DLL_SIZE: 10,
+			// block size
 			BLOCK_SIZE: 16,
 			// size of CRC in bytes
 			CRC_SIZE: 2,
@@ -927,8 +926,8 @@ class WMBUS_DECODER {
 		let month = ((value & 0b111100000000) >> 8);
 		let year = (((value & 0b1111000000000000) >> 9) | ((value & 0b11100000) >> 5)) + 2000;
 		if (day > 31 || month > 12 || year > 2099) {
-			app.log.error("invalid: " + value);
-			return "invalid: " + value;
+			this.logger.error("invalid date: " + value);
+			//return "invalid: " + value;
 		}
 		let date = new Date(year, month-1, day);
 		return this.formatDate(date, 'YYYY-MM-DD');
@@ -1079,11 +1078,17 @@ class WMBUS_DECODER {
 	}
 
 	decodeBCD(digits, bcd) {
+		// check for negative BCD (not allowed according to specs)
+		let sign = 1;
+		if (bcd[digits/2 - 1] >> 4 > 9) {
+			bcd[digits/2 - 1] &= 0b00001111;
+			sign = -1;
+		}
 		let val = 0;
 		for (let i = 0; i < digits / 2; i++) {
 			val += ((bcd[i] & 0x0f) + (((bcd[i] & 0xf0) >> 4) * 10)) * Math.pow(100, i);
 		}
-		return val;
+		return parseInt(sign*val);
 	}
 
 	findVIF(vif, vifInfoRef, dataBlockRef) {
@@ -1923,8 +1928,8 @@ class WMBUS_DECODER {
 
 		if (this.frame_type == this.constant.FRAME_TYPE_A) {
 			// header block is 10 bytes + 2 bytes CRC, each following block is 16 bytes + 2 bytes CRC, the last block may be smaller
-			datalen = ll.lfield - (this.constant.TL_BLOCK_SIZE - 1); // this is without CRCs and the lfield itself
-			this.block_count = Math.ceil(datalen / this.constant.LL_BLOCK_SIZE);
+			datalen = ll.lfield - (this.constant.DLL_SIZE - 1); // this is without CRCs and the lfield itself
+			this.block_count = Math.ceil(datalen / this.constant.BLOCK_SIZE);
 			//msglen = this.constant.TL_BLOCK_SIZE + this.crc_size + datalen + this.block_count * this.crc_size;
 			//this.logger.debug("calc len " + msglen + ", actual " + applayer.length);
 
@@ -1949,6 +1954,7 @@ class WMBUS_DECODER {
 
 		if (applayer.length > datalen) {
 			this.remainingData = applayer.slice(datalen);
+			applayer = applayer.slice(0, datalen);
 		} else if (applayer.length < datalen) {
 			this.errormsg = "application layer message too short, expected " + datalen + ", got " . applayer.length + " bytes";
 			this.errorcode = this.constant.ERR_MSG_TOO_SHORT;
@@ -1993,6 +1999,36 @@ class WMBUS_DECODER {
 			//this.logger.error(this.errormsg);
 			callback && callback({message: this.errormsg, code: this.errorcode});
 		}
+	}
+
+	parseRaw(data, containsCRC, key, callback) {
+		let applayer;
+		let alreadyDec = false;
+
+		if ((typeof key !== 'undefined') && !Buffer.isBuffer(key) && (key === "DECRYPTED")) {
+			alreadyDec = true;
+			key = undefined;
+		}
+
+		let result = {
+			decrypted: alreadyDec,
+			lfield: data[0],
+			cfield: data[1],
+			mfield: data.readUInt16LE(2),
+			manufacturer: this.manId2ascii(data.readUInt16LE(2)),
+			afield: data.slice(4, 10),
+			afield_id: data.readUInt32LE(4),
+			afield_ver: data[8],
+			afield_type: data[9],
+		};
+
+		if (containsCRC) {
+			applayer = data.slice(this.constant.DLL_SIZE + this.constant.CRC_SIZE);
+			applayer = this.removeCRC(applayer);
+		} else {
+			applayer = data.slice(this.constant.DLL_SIZE);
+		}
+		this.parse(result, applayer, key, callback);
 	}
 
 	collectData() {
