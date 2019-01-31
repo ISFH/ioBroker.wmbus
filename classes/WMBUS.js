@@ -871,8 +871,8 @@ class WMBUS_DECODER {
 
 		// not all CRC related code is ported !!!
 		this.crc_size = this.constant.CRC_SIZE;
-		this.errorcode = this.constant.ERR_NO_ERROR;
-		this.errormsg = '';
+		this.errorCode = this.constant.ERR_NO_ERROR;
+		this.errorMessage = '';
 		this.frame_type = this.constant.FRAME_TYPE_A; // default
 		this.alreadyDecrypted = false;
 
@@ -903,15 +903,15 @@ class WMBUS_DECODER {
         return s;
     }
 
-	valueCalcNumeric(value, dataBlock) {
-		let num = value * dataBlock.valueFactor;
-		if (dataBlock.valueFactor < 1 && num.toFixed(0) != num) {
-			num = num.toFixed(dataBlock.valueFactor.toString().length - 2);
+	valueCalcNumeric(value, VIB) {
+		let num = value * VIB.valueFactor;
+		if (VIB.valueFactor < 1 && num.toFixed(0) != num) {
+			num = num.toFixed(VIB.valueFactor.toString().length - 2);
 		}
 		return num;
 	}
 
-	valueCalcDate(value, dataBlock) {
+	valueCalcDate(value, VIB) {
 		//value is a 16bit int
 
 		//day: UI5 [1 to 5] <1 to 31>
@@ -933,7 +933,7 @@ class WMBUS_DECODER {
 		return this.formatDate(date, 'YYYY-MM-DD');
 	}
 
-	valueCalcDateTime(value, dataBlock) {
+	valueCalcDateTime(value, VIB) {
 		// min: UI6 [1 to 6] <0 to 59>
 		// hour: UI5 [9 to13] <0 to 23>
 		// day: UI5 [17 to 21] <1 to 31>
@@ -954,7 +954,7 @@ class WMBUS_DECODER {
 		let datePart = value >> 16;
 		let timeInvalid = value & 0b10000000;
 
-		let dateTime = this.valueCalcDate(datePart, dataBlock);
+		let dateTime = this.valueCalcDate(datePart, VIB);
 		if (timeInvalid == 0) {
 			let min = (value & 0b111111);
 			let hour = (value >> 8) & 0b11111;
@@ -971,33 +971,33 @@ class WMBUS_DECODER {
 		return dateTime;
 	}
 
-	valueCalcHex(value, dataBlock) {
+	valueCalcHex(value, VIB) {
 		return value.toString(16);
 	}
 
-	valueCalcu(value, dataBlock) {
+	valueCalcu(value, VIB) {
 		return (value & 0b00001000 ? 'upper' : 'lower') + ' limit';
 	}
 
-	valueCalcufnn(value, dataBlock) {
+	valueCalcufnn(value, VIB) {
 		let result = (value & 0b00001000 ? 'upper' : 'lower') + ' limit';
 		result += ', ' + (value & 0b00000100 ? 'first' : 'last');
 		result += ', duration ' + (value & 0b11);
 		return result;
 	}
 
-	valueCalcMultCorr1000(value, dataBlock) {
-		dataBlock.value *= 1000;
+	valueCalcMultCorr1000(value, VIB) {
+		VIB.value *= 1000;
 		return "correction by factor 1000";
 	}
 
-	valueCalcTimeperiod(value, dataBlock) {
-		switch (dataBlock.exponent) {
-			case 0: dataBlock.unit = 's'; break;
-			case 1: dataBlock.unit = 'm'; break;
-			case 2: dataBlock.unit = 'h'; break;
-			case 3: dataBlock.unit = 'd'; break;
-			default: dataBlock.unit = '';
+	valueCalcTimeperiod(value, VIB) {
+		switch (VIB.exponent) {
+			case 0: VIB.unit = 's'; break;
+			case 1: VIB.unit = 'm'; break;
+			case 2: VIB.unit = 'h'; break;
+			case 3: VIB.unit = 'd'; break;
+			default: VIB.unit = '';
 		}
 		return value;
 	}
@@ -1091,370 +1091,285 @@ class WMBUS_DECODER {
 		return parseInt(sign*val);
 	}
 
-	findVIF(vif, vifInfoRef, dataBlockRef) {
-		if (typeof vifInfoRef !== 'undefined') {
-			for (let vifType in vifInfoRef) {
-				//this.logger.debug('vifType ' + vifType + ' VIF ' + vif + ' typeMask ' + vifInfoRef[vifType].typeMask + ' type ' + vifInfoRef[vifType].type);
-				if ((vif & vifInfoRef[vifType].typeMask) == vifInfoRef[vifType].type) {
-					this.logger.debug('match vifType ' + vifType);
-					dataBlockRef.exponent = vif & vifInfoRef[vifType].expMask;
-
-					dataBlockRef.type = vifType;
-					dataBlockRef.unit = vifInfoRef[vifType].unit;
-					if ((typeof dataBlockRef.exponent !== 'undefined') && (typeof vifInfoRef[vifType].bias !== 'undefined')) { // is this correct???
-						dataBlockRef.valueFactor = Math.pow(10, (dataBlockRef.exponent + vifInfoRef[vifType].bias))
-					} else {
-						dataBlockRef.valueFactor = 1;
-					}
-					if (typeof vifInfoRef[vifType].calcFunc === 'function') {
-						dataBlockRef.calcFunc = vifInfoRef[vifType].calcFunc.bind(this);
-					}
-
-					this.logger.debug('type ' + dataBlockRef.type + ' bias ' + vifInfoRef[vifType].bias + ' exp ' + dataBlockRef.exponent + ' valueFactor ' + dataBlockRef.valueFactor + ' unit ' + dataBlockRef.unit);
-					return 1;
-				}
-			}
-			this.logger.debug("no match!");
-			return 0;
+	decodeValueInformationBlock(data, offset, dataRecord) {
+		function findTabIndex (el) {
+			return (this.vif & this.table[el].typeMask) == this.table[el].type;
 		}
-		return 1;
-	}
 
-	decodeValueInformationBlock(vib, offset, dataBlockRef) {
-		let offsetStart = offset;
+		function processVIF(vif, info) {
+			VIB.exponent = vif & info.expMask;
+			VIB.unit = info.unit;
+			if ((typeof VIB.exponent !== 'undefined') && (typeof info.bias !== 'undefined')) {
+				VIB.valueFactor = Math.pow(10, (VIB.exponent + info.bias))
+			} else {
+				info.valueFactor = 1;
+			}
+
+			if (typeof info.calcFunc === 'function') {
+				VIB.calcFunc = info.calcFunc.bind(this);
+			}
+		}
+
 		let vif;
-		let vifInfoRef;
-		let vifExtension = 0;
-		let vifExtNo = 0;
-		let dataBlockExt;
-		let VIFExtensions = [];
-		let analyzeVIF = true;
-		let done = false;
-		let isExtension = 0;
+		let vifs = [];
+		let vifTable;
+		let type = 'primary';
 
-		dataBlockRef.type = '';
-		// The unit and multiplier is taken from the table for primary VIF
-		vifInfoRef = this.VIFInfo;
+		let VIB = {};
 
-		//vif = vib[offset++];
-		//isExtension = vif & this.constant.VIF_EXTENSION_BIT;
-
-		do
-		{
-			if (offset >= vib.length) {
-				this.logger.debug("Warning: no data but VIB extension bit still set!");
+		do {
+			if (vifs.length > 10) {
+				VIB.errorMessage = 'too many VIFE';
+				VIB.errorCode = this.constant.ERR_TOO_MANY_VIFE;
+				this.logger.error(VIB.errorMessage);
+				// is breaking a good idea?
 				break;
 			}
 
-			vif = vib[offset++];
-			isExtension = vif & this.constant.VIF_EXTENSION_BIT;
-			this.logger.debug('vif: ' + vif.toString(16) + ' isExtension ' + isExtension);
-
-			if (!isExtension) {
+			vifTable = this.VIFInfo;
+			if (offset >= data.length) {
+				this.logger.debug("Warning: no data but VIF extension bit still set!");
 				break;
 			}
 
-			vifExtension = vif;
-			vif &= ~this.constant.VIF_EXTENSION_BIT;
+			vif = data[offset++];
 
-			vifExtNo++;
-			if (vifExtNo > 10) {
-				dataBlockRef.errormsg = 'too many VIFE';
-				dataBlockRef.errorcode = this.constant.ERR_TOO_MANY_VIFE;
-				this.logger.error(dataBlockRef.errormsg);
-				break;
+			if (vif & 0x7F == 0x7C) { // plain text vif
+				let len = data[offset++];
+				vifs.push({ table: null, vif: data.toString('ascii', offset, offset+len), type: 'plain' });
+				offset += len;
+				if (vif & 0x80) { continue; } else { break;	}
+			} else if (vif == 0xFB) { // just switch table
+				vifTable = this.VIFInfo_FB;
+				vif = data[offset++];
+				type += '-FB';
+			} else if (vif == 0xFD) { // just switch table
+				vifTable = this.VIFInfo_FD;
+				vif = data[offset++];
+				type += '-FB';
+			} else if (vif == 0xFF) { // manufacturer specific
+				let tab = "VIFInfo_" + this.link_layer.manufacturer;
+				vif = data[offset++];
+				if (typeof this[tab] !== 'undefined') {
+					vifTable = this[tab];
+					type += '-' + this.link_layer.manufacturer;
+				} else {
+					this.logger.debug("WARNING: Unkown manufacturer specific vif: 0x" + vif.toString(16));
+				}
+			} else if (vif & 0x80) { // other extension
+				vifTable = this.VIFInfo_other;
 			}
 
-			switch (vif) {
-				case 0x7B:
-					vifInfoRef = this.VIFInfo_FB;
-					break;
-				case 0x7C:
-					// Plaintext VIF
-					let len = vib[offset++];
-					dataBlockRef.type = "see unit";
-					dataBlockRef.unit = vib.toString('ascii', offset, offset+len);
-					offset += len;
-					analyzeVIF = false;
-					done = true;
-					break;
-				case 0x7D:
-					vifInfoRef = this.VIFInfo_FD;
-					break;
-				case 0x7F:
-					if (this.link_layer.manufacturer === 'ESY') {
-						// Easymeter
-						vif = vib[offset++];
-						vifInfoRef = this.VIFInfo_ESY;
-					} else if (this.link_layer.manufacturer === 'KAM') {
-						// Kamstrup
-						vif = vib[offset++];
-						vifInfoRef = this.VIFInfo_KAM;
-					} else {
-						// manufacturer specific data, can't be interpreted
-						dataBlockRef.type = this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC;
-						dataBlockRef.unit = "";
-						analyzeVIF = false;
-					}
-					done = true;
-				default:
-					// enhancement of VIFs other than $FD and $FB (see page 84ff.)
-					this.logger.debug("other extension");
-					dataBlockExt = {};
-					if (this.link_layer.manufacturer === 'ESY') {
-						vifInfoRef = this.VIFInfo_ESY;
-						dataBlockExt.value = vib[offsetStart + 2] * 100;
-					} else if (this.link_layer.manufacturer === 'KAM') {
-						vifInfoRef = this.VIFInfo_KAM;
-					} else {
-						dataBlockExt.value = vif;
-						vifInfoRef = this.VIFInfo_other;
-					}
+			vifs.push({ table: vifTable, vif: vif & 0x7F, type: type });
+			type = 'extension';
+		} while (vif & 0x80);
 
-					if (this.findVIF(vif, vifInfoRef, dataBlockExt)) {
-						VIFExtensions.push(dataBlockExt);
+		VIB.ext = [];
+
+		vifs.forEach(function (item) {
+			if (item.type.startsWith('primary')) { // primary
+				let tabIndex = Object.keys(item.table).findIndex(findTabIndex, item);
+				if (tabIndex === -1) { // not found
+					VIB.errorMessage = "unknown " + item.type + " VIF 0x" + item.vif.toString(16);
+					VIB.type = "VIF" + item.type.replace("primary", "") + " 0x" + item.vif.toString(16);
+					VIB.errorCode = this.constant.ERR_UNKNOWN_VIFE;
+				} else {
+					processVIF.call(this, item.vif, item.table[Object.keys(item.table)[tabIndex]]);
+					VIB.type = Object.keys(item.table)[tabIndex];
+				}
+			} else if (item.type === 'plain') { // plain
+				VIB.type = 'VIF_PLAIN_TEXT';
+				VIB.unit = item.vif;
+			} else { // extension
+				if (typeof item.table !== 'undefined') {
+					let tabIndex = Object.keys(item.table).findIndex(findTabIndex, item);
+					if (tabIndex === -1) { // not found
+						VIB.errorMessage = "unknown " + item.type + " VIFExt 0x" + item.vif.toString(16);
+						VIB.errorCode = this.constant.ERR_UNKNOWN_VIFE;
 					} else {
-						dataBlockRef.type = 'unknown';
-						dataBlockRef.errormsg = "unknown VIFE " + vifExtension.toString(16) + " at offset " + (offset - 1);
-						dataBlockRef.errorcode = this.constant.ERR_UNKNOWN_VIFE;
-						this.logger.error(dataBlockRef.errormsg);
+						item.info = item.table[Object.keys(item.table)[tabIndex]];
+						item.type = Object.keys(item.table)[tabIndex];
+						delete item.table;
 					}
-					break;
+				}
+				VIB.ext.push(item);
 			}
+		}.bind(this));
 
-		} while (!done && isExtension);
+		//this.logger.debug("VIB");
+		//this.logger.debug(VIB);
 
-		if (analyzeVIF) {
-			if (this.findVIF(vif, vifInfoRef, dataBlockRef) == 0) {
-				dataBlockRef.errormsg = "unknown VIF " + vifExtension.toString(16) + " at offset " + (offset - 1);
-				dataBlockRef.errorcode = this.constant.ERR_UNKNOWN_VIFE;
-				this.logger.error(dataBlockRef.errormsg);
-			}
-		}
-		dataBlockRef.VIFExtensions = VIFExtensions;
+		dataRecord.VIB = VIB;
 
-		if (dataBlockRef.type === '') {
-			dataBlockRef.type = 'unknown';
-			dataBlockRef.errormsg = "in VIFExtension " + vifExtension.toString(16) + " unknown VIF " + vif.toString(16);
-			dataBlockRef.errorcode = this.constant.ERR_UNKNOWN_VIF;
-			this.logger.error(dataBlockRef.errormsg);
-		}
 		return offset;
 	}
 
-	decodeDataInformationBlock (dib, offset, dataBlockRef) {
-		let dif = dib[offset++];
+	decodeDataInformationBlock(data, offset, dataRecord) {
+		let dif = data[offset++];
 		let difExtNo = 0;
+		let DIB = {};
 
-		dataBlockRef.tariff = 0;
-		dataBlockRef.devUnit = 0;
-		dataBlockRef.storageNo = (dif & 0b01000000) >> 6;
-		dataBlockRef.functionField = (dif & 0b00110000) >> 4;
-		dataBlockRef.dataField = dif & 0b00001111;
-		dataBlockRef.functionFieldText = this.functionFieldTypes[dataBlockRef.functionField];
-
-		this.logger.debug("dif " + dif.toString(16) + " storage " + dataBlockRef.storageNo);
+		DIB.tariff = 0;
+		DIB.devUnit = 0;
+		DIB.storageNo     = (dif & 0b01000000) >> 6;
+		DIB.functionField = (dif & 0b00110000) >> 4;
+		DIB.dataField     =  dif & 0b00001111;
+		DIB.functionFieldText = this.functionFieldTypes[DIB.functionField];
 
 		while (dif & this.constant.DIF_EXTENSION_BIT) {
-			if (offset >= dib.length) {
+
+			if (offset >= data.length) {
 				this.logger.debug("Warning: no data but DIF extension bit still set!");
 				break;
 			}
-
-			dif = dib[offset++];
+			dif = data[offset++];
 
 			if (difExtNo > 9) {
-				dataBlockRef.errormsg = 'too many DIFE';
-				dataBlockRef.errorcode = this.constant.ERR_TOO_MANY_DIFE;
-				this.logger.error(dataBlockRef.errormsg);
+				DIB.errorMessage = 'too many DIFE';
+				DIB.errorCode = this.constant.ERR_TOO_MANY_DIFE;
+				this.logger.error(DIB.errorMessage);
 				break;
 			}
 
-			dataBlockRef.storageNo |=  (dif & 0b00001111)       << (difExtNo * 4) + 1;
-			dataBlockRef.tariff    |= ((dif & 0b00110000 >> 4)) << (difExtNo * 2);
-			dataBlockRef.devUnit   |= ((dif & 0b01000000 >> 6)) <<  difExtNo;
-			this.logger.debug("dife " + dif.toString(16) + " extno " + difExtNo + " storage " + dataBlockRef.storageNo);
+			DIB.storageNo |=  (dif & 0b00001111)       << (difExtNo * 4) + 1;
+			DIB.tariff    |= ((dif & 0b00110000 >> 4)) << (difExtNo * 2);
+			DIB.devUnit   |= ((dif & 0b01000000 >> 6)) <<  difExtNo;
 			difExtNo++;
 		}
 
-		this.logger.debug("in DIF: datafield " + dataBlockRef.dataField.toString(16));
-		this.logger.debug("offset in dif " + offset);
+		//this.logger.debug("DIB");
+		//this.logger.debug(DIB);
+
+		dataRecord.DIB = DIB;
+
 		return offset;
 	}
 
-	decodeDataRecordHeader(drh, offset, dataBlockRef) {
-		offset = this.decodeDataInformationBlock(drh, offset, dataBlockRef);
-		offset = this.decodeValueInformationBlock(drh, offset, dataBlockRef);
-		this.logger.debug("in DRH: type " + dataBlockRef.type);
-		return offset;
-	}
-
-	decodePayload(payload) {
+	decodeDataRecords(data) {
 		let offset = 0;
-		let dif;
-		let vif;
-		let scale;
-		let value = null;
-		let dataBlockNo = 0;
-		let dataBlocks = [];
-		let dataBlock;
+		let dataRecord;
+		let drCount = 1;
+		let value;
+		this.dataRecords = [];
 
-		PAYLOAD:
-			while (offset < payload.length) {
-				dataBlockNo++;
+		DataLoop:
+		while (offset < data.length)
+		{
+			dataRecord = {};
 
-				// create a new anonymous hash reference
-				dataBlock = { number: dataBlockNo, unit: '' };
-
-				while (payload[offset] == this.constant.DIF_IDLE_FILLER) {
-					// skip filler bytes
-					this.logger.debug("skipping filler at offset " + offset + ' of ' + payload.length);
-					offset++;
-					if (offset >= payload.length) {
-						break PAYLOAD;
-					}
+			while (data[offset] == this.constant.DIF_IDLE_FILLER) {
+				offset++
+				if (offset >= data.length) {
+					break DataLoop;
 				}
-
-				offset = this.decodeDataRecordHeader(payload, offset, dataBlock);
-				this.logger.debug("No. " + dataBlockNo + " type " + dataBlock.dataField.toString(16) + " at offset " + (offset - 1));
-
-				try {
-					switch (dataBlock.dataField) {
-						case this.constant.DIF_NONE:
-							break;
-						case this.constant.DIF_READOUT:
-							this.errormsg = "in datablock " + dataBlockNo + ": unexpected DIF_READOUT";
-							this.errorcode = this.constant.ERR_UNKNOWN_DATAFIELD;
-							this.logger.error(this.errormsg);
-							return 0;
-						case this.constant.DIF_BCD2:
-							value = this.decodeBCD(2, payload.slice(offset, offset+1));
-							offset += 1;
-							break;
-						case this.constant.DIF_BCD4:
-							value = this.decodeBCD(4, payload.slice(offset, offset+2));
-							offset += 2;
-							break;
-						case this.constant.DIF_BCD6:
-							value = this.decodeBCD(6, payload.slice(offset, offset+3));
-							offset += 3;
-							break;
-						case this.constant.DIF_BCD8:
-							value = this.decodeBCD(8, payload.slice(offset, offset+4));
-							offset += 4;
-							break;
-						case this.constant.DIF_BCD12:
-							value = this.decodeBCD(12, payload.slice(offset, offset+6));
-							offset += 6;
-							break;
-						case this.constant.DIF_INT8:
-							value = payload.readInt8(offset);
-							offset += 1;
-							break;
-						case this.constant.DIF_INT16:
-							value = payload.readUInt16LE(offset);
-							offset += 2;
-							break;
-						case this.constant.DIF_INT24:
-							value = payload.readUIntLE(offset, 3);
-							offset += 3;
-							break;
-						case this.constant.DIF_INT32:
-							value = payload.readUInt32LE(offset);
-							offset += 4;
-							break;
-						case this.constant.DIF_INT48:
-							value = payload.readUIntLE(offset, 6);
-							offset += 6;
-							break;
-						case this.constant.DIF_INT64:
-							// this might be wrong...
-							let low = payload.readUInt32LE(offset);
-							let high = payload.readUInt32LE(offset+4);
-							value = low + (high << 32);
-							offset += 8;
-							break;
-						case this.constant.DIF_FLOAT32:
-							//not allowed according to wmbus standard, Qundis seems to use it nevertheless
-							value = payload.readFloatLE(offset);
-							offset += 4;
-							break;
-						case this.constant.DIF_VARLEN:
-							let lvar = payload[offset++] || 0;
-							this.logger.debug("in datablock " + dataBlockNo + ": lvar field " + lvar.toString(16));
-							this.logger.debug("payload len " + payload.length + " offset " + offset);
-							if (lvar <= 0xbf) {
-								if (dataBlock.type === this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC) {
-									// special handling, LSE seems to lie about this
-									value = payload.toString('hex', offset, offset+lvar);
-									this.logger.debug("VALUE: " + value);
-								} else {
-									//  ASCII string with lvar characters
-									value = payload.toString('ascii', offset, offset+lvar);
-									if (this.link_layer.manufacturer === 'ESY') {
-										// Easymeter stores the string backwards!
-										value = value.split('').reverse().join('');
-									}
-								}
-								offset += lvar;
-							} else if (lvar >= 0xc0 && lvar <= 0xcf) {
-								//  positive BCD number with (lvar - C0h) * 2 digits
-								value = this.decodeBCD((lvar - 0xc0) * 2, payload.slice(offset, offset+(lvar - 0xc0)));
-								offset += (lvar - 0xc0);
-							} else if (lvar >= 0xd0 && lvar <= 0xdf) {
-								//  negative BCD number with (lvar - D0h) * 2 digits
-								value = -1 * this.decodeBCD((lvar - 0xd0) * 2, payload.slice(offset, offset+(lvar - 0xd0)));
-								offset += (lvar - 0xd0);
-							} else {
-								this.errormsg = "in datablock " + dataBlockNo + ": unhandled lvar field " + lvar.toString(16);
-								this.errorcode = this.constant.ERR_UNKNOWN_LVAR;
-								this.logger.error(this.errormsg);
-								return 0;
-							}
-							break;
-						case this.constant.DIF_SPECIAL:
-							// special functions
-							this.logger.debug("DIF_SPECIAL at" + offset);
-							value = payload.toString('hex', offset);
-							break PAYLOAD;
-						default:
-							this.errormsg = "in datablock " + dataBlockNo + ": unhandled datafield " + dataBlock.dataField.toString(16);
-							this.errorcode = this.constant.ERR_UNKNOWN_DATAFIELD;
-							this.logger.error(this.errormsg);
-							return 0;
-					}
-				}
-				catch (e) {
-					this.logger.debug("Warning: Not enough data for VIF type! Incomplete telegram data?");
-				}
-				if (typeof dataBlock.calcFunc === 'function') {
-					dataBlock.value = dataBlock.calcFunc(value, dataBlock);
-					this.logger.debug("Value raw " + value + " value calc " + dataBlock.value);
-				} else if (typeof value != null) {
-					dataBlock.value = value;
-				} else {
-					dataBlock.value = "";
-				}
-
-				let VIFExtensions = dataBlock.VIFExtensions;
-				for (let i = 0; i < VIFExtensions.length; i++) {
-					let VIFExtension = VIFExtensions[i];
-					dataBlock.extension = VIFExtension.unit;
-					if (typeof VIFExtension.calcFunc === 'function') {
-						this.logger.debug("Extension value " + VIFExtension.value + ", valueFactor " + VIFExtension.valueFactor);
-						dataBlock.extension += ", " + VIFExtension.calcFunc(VIFExtension.value, dataBlock);
-					} else if (typeof VIFExtension.value !== 'undefined') {
-						dataBlock.extension += ", " + VIFExtension.value.toString(16);
-					} else {
-						//$dataBlock->{extension} = "";
-					}
-				}
-				value = null;
-
-				dataBlocks.push(dataBlock)
 			}
 
-		this.datablocks = dataBlocks;
+			offset = this.decodeDataInformationBlock(data, offset, dataRecord);
+			offset = this.decodeValueInformationBlock(data, offset, dataRecord);
+
+			try {
+				switch (dataRecord.DIB.dataField) {
+					case this.constant.DIF_NONE: value = ''; break;
+					case this.constant.DIF_BCD2: value = this.decodeBCD(2, data.slice(offset, offset+1)); offset += 1; break;
+					case this.constant.DIF_BCD4: value = this.decodeBCD(4, data.slice(offset, offset+2)); offset += 2; break;
+					case this.constant.DIF_BCD6: value = this.decodeBCD(6, data.slice(offset, offset+3)); offset += 3; break;
+					case this.constant.DIF_BCD8: value = this.decodeBCD(8, data.slice(offset, offset+4)); offset += 4; break;
+					case this.constant.DIF_BCD12: value = this.decodeBCD(12, data.slice(offset, offset+6)); offset += 6; break;
+					case this.constant.DIF_INT8: value = data.readInt8(offset); offset += 1; break;
+					case this.constant.DIF_INT16: value = data.readUInt16LE(offset); offset += 2; break;
+					case this.constant.DIF_INT24: value = data.readUIntLE(offset, 3); offset += 3; break;
+					case this.constant.DIF_INT32: value = data.readUInt32LE(offset); offset += 4; break;
+					case this.constant.DIF_INT48: value = data.readUIntLE(offset, 6); offset += 6; break;
+
+					case this.constant.DIF_INT64:
+						// correct?
+						value = data.readUInt32LE(offset) + (data.readUInt32LE(offset+4) << 32);
+						offset += 8;
+						break;
+					case this.constant.DIF_FLOAT32:
+						// correct?
+						value = data.readFloatLE(offset);
+						offset += 4;
+						break;
+					case this.constant.DIF_VARLEN:
+						let lvar = data[offset++];
+						if (lvar <= 0xBF) {
+							if (dataRecord.VIB.type === this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC) { // special handling, LSE seems to lie about this
+								value = data.toString('hex', offset, offset+lvar);
+							} else { //  ASCII string with lvar characters
+								value = data.toString('ascii', offset, offset+lvar);
+								if (this.link_layer.manufacturer === 'ESY') { value = value.split('').reverse().join(''); } // Easymeter stores the string backwards!
+							}
+							offset += lvar;
+						} else if ((lvar >= 0xC0) && (lvar <= 0xCF)) {
+							lvar -= 0xC0;
+							// positive BCD number with (lvar - C0h) * 2 digits
+							value = this.decodeBCD(lvar * 2, data.slice(offset, offset+lvar));
+							offset += lvar;
+						} else if ((lvar >= 0xD0) && (lvar <= 0xDF)) {
+							lvar -= 0xD0;
+							//  negative BCD number with (lvar - D0h) * 2 digits
+							value = -1 * this.decodeBCD(lvar * 2, data.slice(offset, offset+lvar));
+							offset += lvar;
+						} else {
+							this.errorMessage = "in datablock " + drCount + ": unhandled LVAR field 0x" + lvar.toString(16);
+							this.errorCode = this.constant.ERR_UNKNOWN_LVAR;
+							this.logger.error(this.errorMessage);
+							return 0;
+						}
+						break;
+					case this.constant.DIF_READOUT:
+						this.errorMessage = "in datablock " + drCount + ": unexpected DIF_READOUT";
+						this.errorCode = this.constant.ERR_UNKNOWN_DATAFIELD;
+						this.logger.error(this.errorMessage);
+						return 0;
+					case this.constant.DIF_SPECIAL:
+						// special functions
+						this.logger.debug("DIF_SPECIAL at " + offset + ": ");
+						value = data.toString('hex', offset);
+						this.logger.debug(value);
+						break DataLoop;
+					default:
+						this.errorMessage = "in datablock " + drCount + ": unhandled datafield 0x" + dataRecord.DIB.dataField.toString(16);
+						this.errorCode = this.constant.ERR_UNKNOWN_DATAFIELD;
+						this.logger.error(this.errorMessage);
+						return 0;
+				}
+
+				if (typeof dataRecord.VIB.calcFunc === 'function') {
+					dataRecord.VIB.value = dataRecord.VIB.calcFunc(value, dataRecord.VIB);
+					this.logger.debug(dataRecord.VIB.type + ": Value raw " + value + " value calc " + dataRecord.VIB.value);
+				} else if (typeof value != null) {
+					dataRecord.VIB.value = value;
+					this.logger.debug(dataRecord.VIB.type + ": Value " + value);
+				} else {
+					dataRecord.VIB.value = "";
+					this.logger.debug(dataRecord.VIB.type + ": Empty DataRecord?");
+				}
+
+				dataRecord.VIB.extension = '';
+				dataRecord.VIB.ext.forEach(function (ext) {
+					dataRecord.VIB.extension += ext.info.unit + ", ";
+					if (typeof ext.info.calcFunc === 'function') {
+						let ret = ext.info.calcFunc.call(this, ext.vif, dataRecord.VIB);
+						if (ret) {
+							dataRecord.VIB.extension += ret + ", ";
+						}
+					}
+				}.bind(this));
+
+				dataRecord.VIB.extension = dataRecord.VIB.extension.substr(0, dataRecord.VIB.extension.length - 2);
+
+				//this.logger.debug(dataRecord);
+				this.dataRecords.push(dataRecord);
+				drCount++;
+
+			} catch (e) {
+				this.logger.debug(e);
+				this.logger.debug("Warning: Not enough data for DIB.dataField type! Incomplete telegram data?");
+			}
+		}
+
 		return 1;
 	}
 
@@ -1658,9 +1573,9 @@ class WMBUS_DECODER {
 					data = this.decrypt(data.slice(offset), this.aeskey, initVector, 'aes-128-ctr');
 					this.logger.debug("Dec: "+  data.toString('hex'));
 				} else {
-					this.errormsg = 'encrypted message and no aeskey provided';
-					this.errorcode = this.constant.ERR_NO_AESKEY;
-					this.logger.error(this.errormsg);
+					this.errorMessage = 'encrypted message and no aeskey provided';
+					this.errorCode = this.constant.ERR_NO_AESKEY;
+					this.logger.error(this.errorMessage);
 					return 0;
 				}
 
@@ -1671,9 +1586,9 @@ class WMBUS_DECODER {
 				let crc = this.crc.crc(data.slice(2));
 				if (this.ell.crc != crc) {
 					this.logger.debug("crc " + this.ell.crc.toString(16) + ", calculated " + crc.toString(16));
-					this.errormsg = "Payload CRC check failed on ELL" + (this.isEncrypted ? ", wrong AES key?" : "");
-					this.errorcode = this.constant.ERR_CRC_FAILED;
-					this.logger.error(this.errormsg);
+					this.errorMessage = "Payload CRC check failed on ELL" + (this.isEncrypted ? ", wrong AES key?" : "");
+					this.errorCode = this.constant.ERR_CRC_FAILED;
+					this.logger.error(this.errorMessage);
 					return 0;
 				} else {
 					this.decrypted = 1;
@@ -1687,7 +1602,7 @@ class WMBUS_DECODER {
 
 	decodeApplicationLayer(applayer) {
 		this.logger.debug(applayer.toString('hex'));
-		if (this.errorcode != this.constant.ERR_NO_ERROR) {
+		if (this.errorCode != this.constant.ERR_NO_ERROR) {
 			return 0;
 		}
 
@@ -1715,9 +1630,9 @@ class WMBUS_DECODER {
 			current_ci = applayer[offset];
 
 			if (this.afl.fcl_mf) {
-				this.errormsg = "fragmented messages are not yet supported";
-				this.errorcode = this.constant.ERR_FRAGMENT_UNSUPPORTED;
-				this.logger.error(this.errormsg);
+				this.errorMessage = "fragmented messages are not yet supported";
+				this.errorCode = this.constant.ERR_FRAGMENT_UNSUPPORTED;
+				this.logger.error(this.errorMessage);
 				return 0;
 			}
 		}
@@ -1818,15 +1733,15 @@ class WMBUS_DECODER {
 						]);
 						offset = 0;
 					} else {
-						this.errormsg = 'Unknown Kamstrup compact frame format';
-						this.errorcode = this.constant.ERR_UNKNOWN_COMPACT_FORMAT;
-						this.logger.error(this.errormsg);
+						this.errorMessage = 'Unknown Kamstrup compact frame format';
+						this.errorCode = this.constant.ERR_UNKNOWN_COMPACT_FORMAT;
+						this.logger.error(this.errorMessage);
 						return 0;
 					}
 					if (this.application_layer.full_frame_payload_crc != this.crc.crc(applayer)) {
-						this.errormsg = 'Kamstrup compact frame format payload CRC error';
-						this.errorcode = this.constant.ERR_CRC_FAILED;
-						this.logger.error(this.errormsg);
+						this.errorMessage = 'Kamstrup compact frame format payload CRC error';
+						this.errorCode = this.constant.ERR_CRC_FAILED;
+						this.logger.error(this.errorMessage);
 						return 0;
 					}
 					break;
@@ -1834,9 +1749,9 @@ class WMBUS_DECODER {
 				// no break so unhandled manufacturer for CI 0x79 are treated as default too
 			default:
 				// unsupported
-				this.errormsg = 'Unsupported CI Field ' + current_ci.toString(16) + ", remaining payload is " + applayer.toString('hex', offset);
-				this.errorcode = this.constant.ERR_UNKNOWN_CIFIELD;
-				this.logger.error(this.errormsg);
+				this.errorMessage = 'Unsupported CI Field ' + current_ci.toString(16) + ", remaining payload is " + applayer.toString('hex', offset);
+				this.errorCode = this.constant.ERR_UNKNOWN_CIFIELD;
+				this.logger.error(this.errorMessage);
 				return 0;
 		}
 
@@ -1877,24 +1792,24 @@ class WMBUS_DECODER {
 							this.decrypted = 1;
 						} else {
 							// Decryption verification failed
-							this.errormsg = 'Decryption failed, wrong key?';
-							this.errorcode = this.constant.ERR_DECRYPTION_FAILED;
+							this.errorMessage = 'Decryption failed, wrong key?';
+							this.errorCode = this.constant.ERR_DECRYPTION_FAILED;
 							this.logger.error(payload.toString('hex'));
 							return 0;
 						}
 				} else {
-					this.errormsg = 'encrypted message and no aeskey provided';
-					this.errorcode = this.constant.ERR_NO_AESKEY;
-					this.logger.error(this.errormsg);
+					this.errorMessage = 'encrypted message and no aeskey provided';
+					this.errorCode = this.constant.ERR_NO_AESKEY;
+					this.logger.error(this.errorMessage);
 					return 0;
 				}
 				break;
 
 			default:
 				// error, encryption mode not implemented
-				this.errormsg = 'Encryption mode ' + this.config.mode.toString(16) + ' not implemented';
-				this.errorcode = this.constant.ERR_UNKNOWN_ENCRYPTION;
-				this.logger.error(this.errormsg);
+				this.errorMessage = 'Encryption mode ' + this.config.mode.toString(16) + ' not implemented';
+				this.errorCode = this.constant.ERR_UNKNOWN_ENCRYPTION;
+				this.logger.error(this.errorMessage);
 				this.isEncrypted = 1;
 				this.decrypted = 0;
 				return 0;
@@ -1902,12 +1817,12 @@ class WMBUS_DECODER {
 
 		if (this.application_layer.cifield == this.constant.CI_RESP_SML_4 || this.application_layer.cifield == this.constant.CI_RESP_SML_12) {
 			// payload is SML encoded, that's not implemented
-			this.errormsg = "payload is SML encoded, can't be decoded, SML payload is " . applayer.toString('hex', offset);
-			this.errorcode = this.constant.ERR_SML_PAYLOAD;
-			this.logger.error(this.errormsg);
+			this.errorMessage = "payload is SML encoded, can't be decoded, SML payload is " . applayer.toString('hex', offset);
+			this.errorCode = this.constant.ERR_SML_PAYLOAD;
+			this.logger.error(this.errorMessage);
 			return 0;
 		} else {
-			return this.decodePayload(payload);
+			return this.decodeDataRecords(payload);
 		}
 	}
 
@@ -1941,24 +1856,25 @@ class WMBUS_DECODER {
 			// L field is included in crc calculation
 			// each following block contains only data and trailing crc
 			// not yet ported
-			this.errorcode == this.constant.ERR_LINK_LAYER_INVALID;
-			this.errormsg = "Frame type B is not implemented (yet)!";
-			this.logger.error(this.errormsg);
+			this.errorCode == this.constant.ERR_LINK_LAYER_INVALID;
+			this.errorMessage = "Frame type B is not implemented (yet)!";
+			this.logger.error(this.errorMessage);
 			return 0;
 		} else {
-			this.errorcode == this.constant.ERR_LINK_LAYER_INVALID;
-			this.errormsg = "Unkown FRAME_TYPE! " + this.frame_type;
-			this.logger.error(this.errormsg);
+			this.errorCode == this.constant.ERR_LINK_LAYER_INVALID;
+			this.errorMessage = "Unkown FRAME_TYPE! " + this.frame_type;
+			this.logger.error(this.errorMessage);
 			return 0;
 		}
 
+		this.remainingData = undefined;
 		if (applayer.length > datalen) {
 			this.remainingData = applayer.slice(datalen);
 			applayer = applayer.slice(0, datalen);
 		} else if (applayer.length < datalen) {
-			this.errormsg = "application layer message too short, expected " + datalen + ", got " . applayer.length + " bytes";
-			this.errorcode = this.constant.ERR_MSG_TOO_SHORT;
-			this.logger.error(this.errormsg);
+			this.errorMessage = "application layer message too short, expected " + datalen + ", got " . applayer.length + " bytes";
+			this.errorCode = this.constant.ERR_MSG_TOO_SHORT;
+			this.logger.error(this.errorMessage);
 			return 0;
 		}
 
@@ -1984,8 +1900,8 @@ class WMBUS_DECODER {
 			applayer = this.removeCRC(applayer);
 		}
 
-		this.errorcode = this.constant.ERR_NO_ERROR;
-		this.errormsg = '';
+		this.errorCode = this.constant.ERR_NO_ERROR;
+		this.errorMessage = '';
 		this.alreadyDecrypted = (typeof ll.decrypted !== 'undefined' ? ll.decrypted : false);
 
 		if (typeof key !== 'undefined') {
@@ -1996,8 +1912,8 @@ class WMBUS_DECODER {
 		if (ret == 1) { // all okay
 			callback && callback(undefined, this.collectData());
 		} else {
-			//this.logger.error(this.errormsg);
-			callback && callback({message: this.errormsg, code: this.errorcode});
+			//this.logger.error(this.errorMessage);
+			callback && callback({message: this.errorMessage, code: this.errorCode});
 		}
 	}
 
@@ -2046,7 +1962,7 @@ class WMBUS_DECODER {
 			Version: (typeof this.application_layer.meter_vers !== 'undefined' ?  this.application_layer.meter_vers : this.link_layer.afield_ver),
 			Address: address.toString('hex')
 		}
-		result.dataRecord = this.datablocks;
+		result.dataRecord = this.dataRecords;
 
 		return result;
 	}
