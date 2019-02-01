@@ -1057,7 +1057,7 @@ class WMBUS_DECODER {
 				this.config.encrypted_bytes  =  cw & 0b0000000011111111;  /* mode 13 */
 				break;
 			default:
-				this.logger.debug("Warning unknown security mode: " + this.config.mode);
+				this.logger.error("Warning unknown security mode: " + this.config.mode);
 		}
 	}
 
@@ -1127,7 +1127,7 @@ class WMBUS_DECODER {
 			}
 
 			if (offset >= data.length) {
-				this.logger.debug("Warning: no data but VIF extension bit still set!");
+				this.logger.error("Warning: no data but VIF extension bit still set!");
 				break;
 			}
 
@@ -1153,7 +1153,7 @@ class WMBUS_DECODER {
 					vifTable = this[tab];
 					type += '-' + this.link_layer.manufacturer;
 				} else {
-					this.logger.debug("WARNING: Unkown manufacturer specific vif: 0x" + vif.toString(16));
+					this.logger.error("WARNING: Unkown manufacturer specific vif: 0x" + vif.toString(16));
 				}
 			}
 
@@ -1223,7 +1223,7 @@ class WMBUS_DECODER {
 		while (dif & this.constant.DIF_EXTENSION_BIT) {
 
 			if (offset >= data.length) {
-				this.logger.debug("Warning: no data but DIF extension bit still set!");
+				this.logger.error("Warning: no data but DIF extension bit still set!");
 				break;
 			}
 			dif = data[offset++];
@@ -1374,7 +1374,7 @@ class WMBUS_DECODER {
 
 			} catch (e) {
 				this.logger.debug(e);
-				this.logger.debug("Warning: Not enough data for DIB.dataField type! Incomplete telegram data?");
+				this.logger.error("Warning: Not enough data for DIB.dataField type! Incomplete telegram data?");
 			}
 		}
 
@@ -1550,7 +1550,7 @@ class WMBUS_DECODER {
 				// session_number see below
 			break;
 			default:
-				this.logger.debug("Warning: unknown extended link layer CI: 0x" + this.ell.ci.toString(16));
+				this.logger.error("Warning: unknown extended link layer CI: 0x" + this.ell.ci.toString(16));
 		}
 
 		// a little tested - what happens to CRC is still not clear
