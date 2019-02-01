@@ -1146,7 +1146,7 @@ class WMBUS_DECODER {
 
 			if (vif & 0x7F == 0x7C) { // plain text vif
 				let len = data[offset++];
-				vifs.push({ table: null, vif: data.toString('ascii', offset, offset+len), type: type + '-plain' });
+				vifs.push({ table: null, vif: data.toString('ascii', offset, offset+len).split('').reverse().join(''), type: type + '-plain' });
 				offset += len;
 				if (vif & 0x80) { continue; } else { break;	}
 			} else if (vif == 0xFB) { // just switch table
@@ -1630,7 +1630,7 @@ class WMBUS_DECODER {
 	}
 
 	decodeApplicationLayer(applayer) {
-		this.logger.debug(applayer.toString('hex'));
+		this.logger.debug((applayer ? applayer.toString('hex') : "" ));
 		if (this.errorCode != this.constant.ERR_NO_ERROR) {
 			return 0;
 		}
@@ -1901,7 +1901,8 @@ class WMBUS_DECODER {
 			this.remainingData = applayer.slice(datalen);
 			applayer = applayer.slice(0, datalen);
 		} else if (applayer.length < datalen) {
-			this.errorMessage = "application layer message too short, expected " + datalen + ", got " . applayer.length + " bytes";
+			this.errorMessage = "application layer message too short, expected " + datalen + ", got " + applayer.length + " bytes";
+			this.logger.debug(applayer.toString('hex'));
 			this.errorCode = this.constant.ERR_MSG_TOO_SHORT;
 			this.logger.error(this.errorMessage);
 			return 0;
@@ -1937,7 +1938,11 @@ class WMBUS_DECODER {
 			this.aeskey = key;
 		}
 		applayer = (typeof applayer !== 'undefined' ? applayer : ll.data);
-		let ret = this.decodeApplicationLayer(this.decodeLinkLayer(ll, applayer));
+		applayer = this.decodeLinkLayer(ll, applayer);
+		let ret = 0;
+		if (applayer) {
+			ret = this.decodeApplicationLayer(applayer);
+		}
 		if (ret == 1) { // all okay
 			callback && callback(undefined, this.collectData());
 		} else {
