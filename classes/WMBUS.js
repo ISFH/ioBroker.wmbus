@@ -1112,7 +1112,7 @@ class WMBUS_DECODER {
 
 		let vif;
 		let vifs = [];
-		let vifTable;
+		let vifTable = this.VIFInfo;
 		let type = 'primary';
 
 		let VIB = {};
@@ -1126,7 +1126,6 @@ class WMBUS_DECODER {
 				break;
 			}
 
-			vifTable = this.VIFInfo;
 			if (offset >= data.length) {
 				this.logger.debug("Warning: no data but VIF extension bit still set!");
 				break;
@@ -1136,7 +1135,7 @@ class WMBUS_DECODER {
 
 			if (vif & 0x7F == 0x7C) { // plain text vif
 				let len = data[offset++];
-				vifs.push({ table: null, vif: data.toString('ascii', offset, offset+len), type: 'plain' });
+				vifs.push({ table: null, vif: data.toString('ascii', offset, offset+len), type: type + '-plain' });
 				offset += len;
 				if (vif & 0x80) { continue; } else { break;	}
 			} else if (vif == 0xFB) { // just switch table
@@ -1162,34 +1161,41 @@ class WMBUS_DECODER {
 
 			vifs.push({ table: vifTable, vif: vif & 0x7F, type: type });
 			type = 'extension';
+			vifTable = this.VIFInfo_other;
 		} while (vif & 0x80);
 
 		VIB.ext = [];
 
 		vifs.forEach(function (item) {
 			if (item.type.startsWith('primary')) { // primary
-				let tabIndex = Object.keys(item.table).findIndex(findTabIndex, item);
-				if (tabIndex === -1) { // not found
-					VIB.errorMessage = "unknown " + item.type + " VIF 0x" + item.vif.toString(16);
-					VIB.type = "VIF" + item.type.replace("primary", "") + " 0x" + item.vif.toString(16);
-					VIB.errorCode = this.constant.ERR_UNKNOWN_VIFE;
+				if (item.type.endsWith('plain')) {
+					VIB.type = 'VIF_PLAIN_TEXT';
+					VIB.unit = item.vif;
 				} else {
-					processVIF.call(this, item.vif, item.table[Object.keys(item.table)[tabIndex]]);
-					VIB.type = Object.keys(item.table)[tabIndex];
-				}
-			} else if (item.type === 'plain') { // plain
-				VIB.type = 'VIF_PLAIN_TEXT';
-				VIB.unit = item.vif;
-			} else { // extension
-				if (typeof item.table !== 'undefined') {
 					let tabIndex = Object.keys(item.table).findIndex(findTabIndex, item);
 					if (tabIndex === -1) { // not found
-						VIB.errorMessage = "unknown " + item.type + " VIFExt 0x" + item.vif.toString(16);
+						VIB.errorMessage = "unknown " + item.type + " VIF 0x" + item.vif.toString(16);
+						VIB.type = "VIF" + item.type.replace("primary", "") + " 0x" + item.vif.toString(16);
 						VIB.errorCode = this.constant.ERR_UNKNOWN_VIFE;
 					} else {
-						item.info = item.table[Object.keys(item.table)[tabIndex]];
-						item.type = Object.keys(item.table)[tabIndex];
-						delete item.table;
+						processVIF.call(this, item.vif, item.table[Object.keys(item.table)[tabIndex]]);
+						VIB.type = Object.keys(item.table)[tabIndex];
+					}
+				}
+			} else { // extension
+				if (typeof item.table !== 'undefined') {
+					if (item.type.endsWith('plain')) {
+						item.unit = item.vif;
+					} else {
+						let tabIndex = Object.keys(item.table).findIndex(findTabIndex, item);
+						if (tabIndex === -1) { // not found
+							VIB.errorMessage = "unknown " + item.type + " VIFExt 0x" + item.vif.toString(16);
+							VIB.errorCode = this.constant.ERR_UNKNOWN_VIFE;
+						} else {
+							item.info = item.table[Object.keys(item.table)[tabIndex]];
+							item.type = Object.keys(item.table)[tabIndex];
+							delete item.table;
+						}
 					}
 				}
 				VIB.ext.push(item);
@@ -1349,6 +1355,10 @@ class WMBUS_DECODER {
 
 				dataRecord.VIB.extension = '';
 				dataRecord.VIB.ext.forEach(function (ext) {
+					if (typeof ext.info === 'undefined') {
+						dataRecord.VIB.extension += "Unknown VIFExt 0x" + ext.vif.toString(16) + ", ";
+						return;
+					}
 					dataRecord.VIB.extension += ext.info.unit + ", ";
 					if (typeof ext.info.calcFunc === 'function') {
 						let ret = ext.info.calcFunc.call(this, ext.vif, dataRecord.VIB);
@@ -1962,7 +1972,21 @@ class WMBUS_DECODER {
 			Version: (typeof this.application_layer.meter_vers !== 'undefined' ?  this.application_layer.meter_vers : this.link_layer.afield_ver),
 			Address: address.toString('hex')
 		}
-		result.dataRecord = this.dataRecords;
+		result.dataRecord = [];
+		let count = 0;
+		this.dataRecords.forEach(function(item) {
+			count++;
+			result.dataRecord.push({
+				number: count,
+				value: item.VIB.value,
+				unit: item.VIB.unit,
+				type: item.VIB.type,
+				extension: item.VIB.extension,
+				tariff: item.DIB.tariff,
+				storageNo: item.DIB.storageNo,
+				devUnit: item.DIB.devUnit
+			});
+		});
 
 		return result;
 	}
