@@ -1145,7 +1145,7 @@ class WMBUS_DECODER {
 			} else if (vif == 0xFD) { // just switch table
 				vifTable = this.VIFInfo_FD;
 				vif = data[offset++];
-				type += '-FB';
+				type += '-FD';
 			} else if (vif == 0xFF) { // manufacturer specific
 				let tab = "VIFInfo_" + this.link_layer.manufacturer;
 				vif = data[offset++];
@@ -1301,8 +1301,7 @@ class WMBUS_DECODER {
 							if (dataRecord.VIB.type === this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC) { // special handling, LSE seems to lie about this
 								value = data.toString('hex', offset, offset+lvar);
 							} else { //  ASCII string with lvar characters
-								value = data.toString('ascii', offset, offset+lvar);
-								if (this.link_layer.manufacturer === 'ESY') { value = value.split('').reverse().join(''); } // Easymeter stores the string backwards!
+								value = data.toString('ascii', offset, offset+lvar).split('').reverse().join('');
 							}
 							offset += lvar;
 						} else if ((lvar >= 0xC0) && (lvar <= 0xCF)) {
@@ -1992,7 +1991,9 @@ class WMBUS_DECODER {
 				extension: item.VIB.extension,
 				tariff: item.DIB.tariff,
 				storageNo: item.DIB.storageNo,
-				devUnit: item.DIB.devUnit
+				devUnit: item.DIB.devUnit,
+				functionFieldText: item.DIB.functionFieldText,
+				functionField: item.DIB.functionField
 			});
 		});
 
