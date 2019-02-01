@@ -1155,8 +1155,6 @@ class WMBUS_DECODER {
 				} else {
 					this.logger.debug("WARNING: Unkown manufacturer specific vif: 0x" + vif.toString(16));
 				}
-			} else if (vif & 0x80) { // other extension
-				vifTable = this.VIFInfo_other;
 			}
 
 			vifs.push({ table: vifTable, vif: vif & 0x7F, type: type });
@@ -1568,6 +1566,16 @@ class WMBUS_DECODER {
 			this.isEncrypted = this.ell.session_number_enc != 0;
 			this.decrypted = 0;
 
+			// is this already decrypted? check against CRC
+			let rawCRC = data.readUInt16LE(offset);
+			let rawCRCcalc = this.crc.crc(data.slice(offset+2));
+			this.logger.debug("crc " + rawCRC.toString(16) + ", calculated " + rawCRCcalc.toString(16));
+
+			if (rawCRC == rawCRCcalc) {
+				this.logger.debug("ELL encryption found, but data already seems to be decrypted - CRC match");
+				return offset + 2;
+			}
+
 			if (this.isEncrypted) {
 				if (this.aeskey) {
 					// AES IV
@@ -1578,7 +1586,7 @@ class WMBUS_DECODER {
 						Buffer.alloc(8)
 					]);
 					initVector.writeUInt16LE((typeof this.ell.manufacturer !== 'undefined' ? this.ell.manufacturer : this.link_layer.mfield));
-					initVector[8] = this.ell.communication_control;
+					initVector[8] = this.ell.communication_control & 0xEF; // reset hop counter
 					initVector.writeUInt32LE(this.ell.session_number, 9);
 					data = this.decrypt(data.slice(offset), this.aeskey, initVector, 'aes-128-ctr');
 					this.logger.debug("Dec: "+  data.toString('hex'));
