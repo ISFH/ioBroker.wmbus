@@ -785,6 +785,17 @@ class WMBUS_DECODER {
 			}
 		};
 
+		// catch unknown VIF(E)
+		this.VIFInfo_unknown = {
+			VIF_TYPE_MANUFACTURER_SPECIFIC: {
+				typeMask: 0b00000000,
+				expMask : 0b00000000,
+				type    : 0b00000000,
+				bias    : 0,
+				unit    : '',
+			}
+		};
+
 		// see 4.2.3, page 24
 		this.validDeviceTypes = {
 			0x00: 'Other',
@@ -1154,6 +1165,7 @@ class WMBUS_DECODER {
 					type += '-' + this.link_layer.manufacturer;
 				} else {
 					this.logger.error("WARNING: Unkown manufacturer specific vif: 0x" + vif.toString(16));
+					vifTable = this.VIFInfo_unknown;
 				}
 			}
 
@@ -1298,7 +1310,7 @@ class WMBUS_DECODER {
 					case this.constant.DIF_VARLEN:
 						let lvar = data[offset++];
 						if (lvar <= 0xBF) {
-							if (dataRecord.VIB.type === this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC) { // special handling, LSE seems to lie about this
+							if (this.constant[dataRecord.VIB.type] === this.constant.VIF_TYPE_MANUFACTURER_SPECIFIC) { // get as hex string
 								value = data.toString('hex', offset, offset+lvar);
 							} else { //  ASCII string with lvar characters
 								value = data.toString('ascii', offset, offset+lvar).split('').reverse().join('');
