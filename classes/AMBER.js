@@ -49,7 +49,7 @@ class AMBER_WMBUS {
 				that.logger('telegram received: ' + that.frameBuffer.toString('hex'));
 				let data = that.frameBuffer.slice(2, that.telegramLength-2);
 				// fix L field
-				data[0] = data[0] - 2;
+				data[0] = data[0] - 1;
 				if (typeof this.incomingData === 'function') {
 					this.incomingData({frame_type: 'A', contains_crc: false, raw_data: data, rssi: 0, ts: new Date().getTime()});
 				}
