@@ -70,6 +70,15 @@
                 "write": false,
                 "def":   false
             },
+			"_id":  "info.rawdata",
+            "type": "state",
+            "common": {
+                "role":  "value",
+                "name":  "Telegram raw data if parser failed",
+                "read":  true,
+                "write": false,
+                "def":   false
+            },
             "native": {}
         }
     ]

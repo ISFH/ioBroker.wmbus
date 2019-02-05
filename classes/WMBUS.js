@@ -7,7 +7,7 @@
  * 'partially re-ported' at 2019-Jan-04 by Christian Landvogt
  * git-svn-id: https://svn.fhem.de/fhem/trunk@18058 2b470e98-0d58-463d-a4d8-8e2adae1ed80
  *
- * handling of CRC is still missing if more than one block sent?
+ * many bugfixes, refactoring and additional features by Christian Landvogt
  *
  */
 
@@ -72,9 +72,6 @@ class WMBUS_DECODER {
 			// block size
 			FRAME_A_BLOCK_SIZE: 16,
 			FRAME_B_BLOCK_SIZE: 128,
-			FRAME_B_LENGTH: 129,
-			// size of CRC in bytes
-			CRC_SIZE: 2,
 			AES_BLOCK_SIZE: 16,
 
 			// sent by meter
@@ -2011,6 +2008,7 @@ class WMBUS_DECODER {
 					this.errorMessage = "fragmented messages are not yet supported";
 					this.errorCode = this.constant.ERR_FRAGMENT_UNSUPPORTED;
 					this.logger.error(this.errorMessage);
+					callback && callback({message: this.errorMessage, code: this.errorCode});
 					return 0;
 				}
 			}
@@ -2024,6 +2022,7 @@ class WMBUS_DECODER {
 			}
 			return app_return;
 		}
+		callback && callback({message: this.errorMessage, code: this.errorCode});
 		return 0;
 	}
 

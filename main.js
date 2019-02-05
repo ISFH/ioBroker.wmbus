@@ -77,10 +77,10 @@ process.on('uncaughtException', err => {
 });
 
 function parseID(data) {
-	function man2ascii(idhex) {
-		return String.fromCharCode((idhex >> 10) + 64) + String.fromCharCode(((idhex >> 5) & 0x1f) + 64) + String.fromCharCode((idhex & 0x1f) + 64);
-	}
-	return man2ascii(data.readUInt16LE(2)) + "-" + data.readUInt32LE(4).toString(16).padStart(8,'0');
+    function man2ascii(idhex) {
+        return String.fromCharCode((idhex >> 10) + 64) + String.fromCharCode(((idhex >> 5) & 0x1f) + 64) + String.fromCharCode((idhex & 0x1f) + 64);
+    }
+    return man2ascii(data.readUInt16LE(2)) + "-" + data.readUInt32LE(4).toString(16).padStart(8,'0');
 }
 
 function dataReceived(data) {
@@ -119,16 +119,17 @@ function dataReceived(data) {
         }
     }
 
-    decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, function(err, data) {
+    decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, function(err, result) {
         if (err) {
-            adapter.log.error('Error parseing wMBus device: ' + id);
+            adapter.log.error('Error parsing wMBus device: ' + id);
             if (err.code == 9) { // ERR_NO_AESKEY
                 needsKey.push(id);
             }
+            adapter.setState('info.rawdata', data.raw_data.toString('hex'), true);
             adapter.log.error(err.message);
             return;
         }
-        updateDevice(data.deviceInformation.Manufacturer + '-' + data.deviceInformation.Id, data);
+        updateDevice(result.deviceInformation.Manufacturer + '-' + result.deviceInformation.Id, result);
     });
 }
 
