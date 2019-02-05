@@ -71,7 +71,7 @@ class WMBUS_DECODER {
 			DLL_SIZE: 10,
 			// block size
 			FRAME_A_BLOCK_SIZE: 16,
-			FRAME_B_BLOCK_SIZE: 129,
+			FRAME_B_BLOCK_SIZE: 128,
 			FRAME_B_LENGTH: 129,
 			// size of CRC in bytes
 			CRC_SIZE: 2,
@@ -1801,6 +1801,7 @@ class WMBUS_DECODER {
 		let i = 0;
 		// assume data starts with L field (as it should) 
 		// L field is total length without itself and CRC (for type A!)!
+		// L field is total length including CRC without itself (for type B!)!
 		// L field might need adjustement by device class - e.g. AMBER includes its own CRC in it!
 		this.link_layer.lfield = data[i++];
 		this.link_layer.cfield = data[i++];
@@ -1824,7 +1825,7 @@ class WMBUS_DECODER {
 				if (data.readUInt16BE(i) != crc) {
 					// CRC failed
 					this.errorCode == this.constant.ERR_CRC_FAILED;
-					this.errorMessage = "CRC for Data link layer failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(i).toString(16);
+					this.errorMessage = "CRC for frame type A block 1 failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(i).toString(16);
 					this.logger.error(this.errorMessage);
 					return 0;
 				}
@@ -1835,7 +1836,7 @@ class WMBUS_DECODER {
 				let remainingTotalSize = blockCount * 2 + remainingSize;
 
 				if (remainingTotalSize + i > data.length) {
-					this.errorMessage = "application layer message too short, expected " + remainingTotalSize + ", got " + data.length + " bytes";
+					this.errorMessage = "application layer message too short, expected " + (remainingTotalSize + i) + ", got " + data.length + " bytes";
 					this.logger.debug(data.toString('hex'));
 					this.errorCode = this.constant.ERR_MSG_TOO_SHORT;
 					this.logger.error(this.errorMessage);
@@ -1851,7 +1852,7 @@ class WMBUS_DECODER {
 				let new_data = Buffer.alloc(0);
 
 				// check remaining blocks and remove CRC
-				let bcount = 1;
+				let bcount = 2;
 				do {
 					let blockSize = (i + this.constant.FRAME_A_BLOCK_SIZE + 2 <= data.length ? this.constant.FRAME_A_BLOCK_SIZE : data.length - 2 - i);
 					let block = data.slice(i, i + blockSize);
@@ -1860,7 +1861,7 @@ class WMBUS_DECODER {
 					if (data.readUInt16BE(i) != crc) {
 						// CRC failed
 						this.errorCode == this.constant.ERR_CRC_FAILED;
-						this.errorMessage = "CRC for block " + bcount + " failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(i).toString(16);
+						this.errorMessage = "CRC for frame type A block " + bcount + " failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(i).toString(16);
 						this.logger.error(this.errorMessage);
 						return 0;
 					}
@@ -1875,13 +1876,60 @@ class WMBUS_DECODER {
 				return new_data;
 			} // else
 			this.remainingData = data.slice(i + remainingSize);
+			if (remainingSize + i > data.length) {
+				this.errorMessage = "application layer message too short, expected " + (remainingSize + i) + ", got " + data.length + " bytes";
+				this.logger.debug(data.toString('hex'));
+				this.errorCode = this.constant.ERR_MSG_TOO_SHORT;
+				this.logger.error(this.errorMessage);
+				return 0;
+			}
+
 			return data.slice(i, i + remainingSize);
 
 		} else if (this.frame_type == this.constant.FRAME_TYPE_B) {
-			this.errorCode == this.constant.ERR_LINK_LAYER_INVALID;
-			this.errorMessage = "Frame type " + this.frame_type + " is not implemented!";
-			this.logger.error(this.errorMessage);
-			return 0;
+			let remainingSize = this.link_layer.lfield + 1 - this.constant.DLL_SIZE;
+
+			if (remainingSize + i > data.length) {
+				this.errorMessage = "application layer message too short, expected " + (remainingSize + i) + ", got " + data.length + " bytes";
+				this.logger.debug(data.toString('hex'));
+				this.errorCode = this.constant.ERR_MSG_TOO_SHORT;
+				this.logger.error(this.errorMessage);
+				return 0;
+			}
+
+			// too much data
+			if (data.length > remainingSize + i) {
+				this.remainingData = data.slice(remainingSize);
+				data = data.slice(0, i + remainingSize);
+			}
+
+			let block3;
+			if (this.link_layer.lfield >= this.constant.FRAME_B_BLOCK_SIZE) { // message has 3 blocks
+				let block3 = data.slice(this.constant.FRAME_B_BLOCK_SIZE, data.length - 2);
+				let crc = this.crc.crc(block3);
+				if (data.readUInt16BE(data.length - 2) != crc) {
+					// CRC failed
+					this.errorCode == this.constant.ERR_CRC_FAILED;
+					this.errorMessage = "CRC for frame type B block 3 failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(data.length - 2).toString(16);
+					this.logger.error(this.errorMessage);
+					return 0;
+				}
+			} else {
+				block3 = Buffer.alloc(0);
+			}
+
+			let len2 = this.link_layer.lfield + 1 - (block3.length ? block3.length + 2 : 0) - this.constant.DLL_SIZE - 2;
+			let crc = this.crc.crc(data.slice(0, len2 + this.constant.DLL_SIZE));
+			if (data.readUInt16BE(len2 + this.constant.DLL_SIZE) != crc) {
+				// CRC failed
+				this.errorCode == this.constant.ERR_CRC_FAILED;
+				this.errorMessage = "CRC for frame type B block 1+2 failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(len2 + this.constant.DLL_SIZE).toString(16);
+				this.logger.error(this.errorMessage);
+				return 0;
+			}
+
+			return Buffer.concat([data.slice(i, i+len2), block3]);
+
 		} else {
 			this.errorCode == this.constant.ERR_LINK_LAYER_INVALID;
 			this.errorMessage = "Frame type " + this.frame_type + " is not implemented!";
