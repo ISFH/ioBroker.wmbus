@@ -807,7 +807,7 @@ class EBI_WMBUS extends EBI {
 		let data = {
 			frame_type: frame_type, 
 			contains_crc: false, 
-			raw_data: data.slice(dll),
+			raw_data: payload.slice(dll),
 			rssi: rssi,
 			ts: ts
 		};
