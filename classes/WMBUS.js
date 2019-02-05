@@ -70,10 +70,12 @@ class WMBUS_DECODER {
 			// Data Link Layer
 			DLL_SIZE: 10,
 			// block size
-			BLOCK_SIZE: 16,
+			FRAME_A_BLOCK_SIZE: 16,
+			FRAME_B_BLOCK_SIZE: 129,
+			FRAME_B_LENGTH: 129,
 			// size of CRC in bytes
 			CRC_SIZE: 2,
-			FRAME_B_LENGTH: 129,
+			AES_BLOCK_SIZE: 16,
 
 			// sent by meter
 			SND_NR: 0x44, // Send, no reply
@@ -880,26 +882,12 @@ class WMBUS_DECODER {
 			0b11: 'Value during error state',
 		};
 
-		// not all CRC related code is ported !!!
-		this.crc_size = this.constant.CRC_SIZE;
 		this.errorCode = this.constant.ERR_NO_ERROR;
 		this.errorMessage = '';
 		this.frame_type = this.constant.FRAME_TYPE_A; // default
 		this.alreadyDecrypted = false;
 
 	} // constructor end
-
-	removeCRC(data) {
-		let out = data.slice(0, this.constant.BLOCK_SIZE);
-		let offset = this.constant.BLOCK_SIZE + this.constant.CRC_SIZE;
-		while ((offset + this.constant.BLOCK_SIZE + this.constant.CRC_SIZE) < data.length) {
-			out = Buffer.concat([out, data.slice(offset, offset + this.constant.BLOCK_SIZE)]);
-			offset += this.constant.BLOCK_SIZE + this.constant.CRC_SIZE;
-		}
-
-		out = Buffer.concat([out, data.slice(offset, data.length - this.constant.CRC_SIZE)]);
-		return out;
-	}
 
 	formatDate(date, format) {
         function pad(num) {
@@ -1396,7 +1384,7 @@ class WMBUS_DECODER {
 		// see 4.2.5.3, page 26
 		let initVector;
 		if (typeof iv === 'undefined') {
-			initVector = Buffer.concat([Buffer.alloc(2), this.link_layer.afield, Buffer.alloc(8, this.application_layer.access_no)]);
+			initVector = Buffer.concat([Buffer.alloc(2), this.link_layer.afield_raw, Buffer.alloc(8, this.application_layer.access_no)]);
 			if (typeof this.application_layer.meter_id !== 'undefined') {
 				initVector.writeUInt32LE(this.application_layer.meter_id, 2);
 				initVector.writeUInt8(this.application_layer.meter_vers, 6);
@@ -1434,7 +1422,7 @@ class WMBUS_DECODER {
 		if (typeof this.application_layer.meter_id !== 'undefined') {
 			msg.writeUInt32LE(this.application_layer.meter_id, 5);
 		} else {
-			msg.writeUInt32LE(this.link_layer.afield.readUInt32LE(0), 5);
+			msg.writeUInt32LE(this.link_layer.afield, 5);
 		}
 		let kenc = aesCmac(key, msg, {returnAsBuffer: true});
 		this.logger.debug("Kenc: " + kenc.toString('hex'));
@@ -1574,8 +1562,7 @@ class WMBUS_DECODER {
 			this.ell.session_number_enc     = (this.ell.session_number & 0b11100000000000000000000000000000) >> 29;
 			this.ell.session_number_time    = (this.ell.session_number & 0b00011111111111111111111111110000) >> 4;
 			this.ell.session_number_session =  this.ell.session_number & 0b00000000000000000000000000001111;
-			this.isEncrypted = this.ell.session_number_enc != 0;
-			this.decrypted = 0;
+			let isEncrypted = this.ell.session_number_enc != 0;
 
 			// is this already decrypted? check against CRC
 			let rawCRC = data.readUInt16LE(offset);
@@ -1587,13 +1574,13 @@ class WMBUS_DECODER {
 				return offset + 2;
 			}
 
-			if (this.isEncrypted) {
+			if (isEncrypted) {
 				if (this.aeskey) {
 					// AES IV
 					// M-field, A-field, CC, SN, (00, 0000 vs FN     BC ???)
 					let initVector = Buffer.concat([
 						Buffer.alloc(2),
-						(typeof this.ell.address !== 'undefined' ? this.ell.address : this.link_layer.afield),
+						(typeof this.ell.address !== 'undefined' ? this.ell.address : this.link_layer.afield_raw),
 						Buffer.alloc(8)
 					]);
 					initVector.writeUInt16LE((typeof this.ell.manufacturer !== 'undefined' ? this.ell.manufacturer : this.link_layer.mfield));
@@ -1615,12 +1602,10 @@ class WMBUS_DECODER {
 				let crc = this.crc.crc(data.slice(2));
 				if (this.ell.crc != crc) {
 					this.logger.debug("crc " + this.ell.crc.toString(16) + ", calculated " + crc.toString(16));
-					this.errorMessage = "Payload CRC check failed on ELL" + (this.isEncrypted ? ", wrong AES key?" : "");
+					this.errorMessage = "Payload CRC check failed on ELL" + (isEncrypted ? ", wrong AES key?" : "");
 					this.errorCode = this.constant.ERR_CRC_FAILED;
 					this.logger.error(this.errorMessage);
 					return 0;
-				} else {
-					this.decrypted = 1;
 				}
 				offset = data.slice(2); // skip PayloadCRC
 			}
@@ -1629,54 +1614,18 @@ class WMBUS_DECODER {
 		return offset;
 	}
 
-	decodeApplicationLayer(applayer) {
-		this.logger.debug((applayer ? applayer.toString('hex') : "" ));
-		if (this.errorCode != this.constant.ERR_NO_ERROR) {
-			return 0;
-		}
-
-		let offset = 0;
-		let current_ci = applayer[offset];
-		this.application_layer = {};
-
-		if ((current_ci >= this.constant.CI_ELL_2) && (current_ci <= this.constant.CI_ELL_16)) {
-			// Extended Link Layer
-			this.logger.debug("Extended Link Layer");
-			let ell_return = this.decodeELL(applayer, offset);
-			if (Buffer.isBuffer(ell_return)) {
-				applayer = ell_return;
-				offset = 0;
-			} else {
-				offset = ell_return;
-			}
-			current_ci = applayer[offset];
-		}
-
-		if (current_ci == this.constant.CI_AFL) {
-			// Authentification and Fragmentation Layer
-			this.logger.debug("Authentification and Fragmentation Layer");
-			offset = this.decodeAFL(applayer, offset);
-			current_ci = applayer[offset];
-
-			if (this.afl.fcl_mf) {
-				this.errorMessage = "fragmented messages are not yet supported";
-				this.errorCode = this.constant.ERR_FRAGMENT_UNSUPPORTED;
-				this.logger.error(this.errorMessage);
-				return 0;
-			}
-		}
-
+	decodeApplicationLayer(data, offset) {
 		// initialize some fields
+		this.application_layer = {};
 		this.application_layer.status = 0;
 		this.application_layer.statusstring = "";
 		this.application_layer.access_no = 0;
-		this.application_layer.cifield = current_ci;
 		this.config = { mode: 0 };
 
 		let appStart = offset;
-		offset++;
+		this.application_layer.cifield = data[offset++];
 
-		switch (current_ci) {
+		switch (this.application_layer.cifield) {
 			case this.constant.CI_RESP_0:
 				// no header - only M-Bus?
 				this.logger.debug("No header");
@@ -1685,30 +1634,30 @@ class WMBUS_DECODER {
 			case this.constant.CI_RESP_4:
 			case this.constant.CI_RESP_SML_4:
 				this.logger.debug("Short header");
-				this.application_layer.access_no = applayer[offset++];
-				this.application_layer.status = applayer[offset++];
-				this.decodeConfigword(applayer.readUInt16LE(offset));
+				this.application_layer.access_no = data[offset++];
+				this.application_layer.status = data[offset++];
+				this.decodeConfigword(data.readUInt16LE(offset));
 				offset += 2;
 				if ((this.config.mode == 7) || (this.config.mode == 13)) {
-					this.decodeConfigwordExt(applayer[offset++]);
+					this.decodeConfigwordExt(data[offset++]);
 				}
 				break;
 
 			case this.constant.CI_RESP_12:
 			case this.constant.CI_RESP_SML_12:
 				this.logger.debug("Long header");
-				this.application_layer.meter_id = applayer.readUInt32LE(offset);
+				this.application_layer.meter_id = data.readUInt32LE(offset);
 				offset += 4;
-				this.application_layer.meter_man = applayer.readUInt16LE(offset);
+				this.application_layer.meter_man = data.readUInt16LE(offset);
 				offset += 2;
-				this.application_layer.meter_vers = applayer[offset++];
-				this.application_layer.meter_dev = applayer[offset++];
-				this.application_layer.access_no = applayer[offset++];
-				this.application_layer.status = applayer[offset++];
-				this.decodeConfigword(applayer.readUInt16LE(offset));
+				this.application_layer.meter_vers = data[offset++];
+				this.application_layer.meter_dev = data[offset++];
+				this.application_layer.access_no = data[offset++];
+				this.application_layer.status = data[offset++];
+				this.decodeConfigword(data.readUInt16LE(offset));
 				offset += 2;
 				if ((this.config.mode == 7) || (this.config.mode == 13)) {
-					this.decodeConfigwordExt(applayer[offset++]);
+					this.decodeConfigwordExt(data[offset++]);
 				}
 				//this.application_layer.meter_id = this.application_layer.meter_id.toString().padStart(8, '0');
 				this.application_layer.meter_devtypestring = this.validDeviceTypes[this.application_layer.meter_dev] || 'unknown';
@@ -1719,46 +1668,46 @@ class WMBUS_DECODER {
 				this.logger.debug("MANUFACTURER header");
 				if (this.link_layer.manufacturer === 'KAM') {
 					//print "Kamstrup compact frame header\n";
-					this.application_layer.format_signature = applayer.readUInt16LE(offset);
+					this.application_layer.format_signature = data.readUInt16LE(offset);
 					offset += 2;
-					this.application_layer.full_frame_payload_crc = applayer.readUInt16LE(offset);
+					this.application_layer.full_frame_payload_crc = data.readUInt16LE(offset);
 					offset += 2;
 					if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x44, 0x13]))) {
 						// Info, Volume, Target Volume
 						// convert into full frame
-						applayer = Buffer.concat([
-							Buffer.from([0x02, 0xFF, 0x20]), applayer.slice(5, 5+2), // info
-							Buffer.from([0x04, 0x13]), applayer.slice(7, 7+4),       // volume
-							Buffer.from([0x44, 0x13]), applayer.slice(11, 11+4)      // target volume
+						data = Buffer.concat([
+							Buffer.from([0x02, 0xFF, 0x20]), data.slice(5, 5+2), // info
+							Buffer.from([0x04, 0x13]), data.slice(7, 7+4),       // volume
+							Buffer.from([0x44, 0x13]), data.slice(11, 11+4)      // target volume
 						]);
 						offset = 0;
 					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x16, 0x44, 0x16]))) {
 						// Info, ???
 						// convert into full frame
-						applayer = Buffer.concat([
-							Buffer.from([0x02, 0xFF, 0x20]), applayer.slice(5, 5+2), // info
-							Buffer.from([0x04, 0x16]), applayer.slice(7, 7+4),       // ???
-							Buffer.from([0x44, 0x16]), applayer.slice(11, 11+4)      // ???
+						data = Buffer.concat([
+							Buffer.from([0x02, 0xFF, 0x20]), data.slice(5, 5+2), // info
+							Buffer.from([0x04, 0x16]), data.slice(7, 7+4),       // ???
+							Buffer.from([0x44, 0x16]), data.slice(11, 11+4)      // ???
 						]);
 						offset = 0;
 					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x52, 0x3B]))) {
 						// Info, Volume, Max flow
 						// convert into full frame
-						applayer = Buffer.concat([
-							Buffer.from([0x02, 0xFF, 0x20]), applayer.slice(5, 5+2), // info
-							Buffer.from([0x04, 0x13]), applayer.slice(7, 7+4),       // volume
-							Buffer.from([0x52, 0x3B]), applayer.slice(11, 11+2)      // max flow
+						data = Buffer.concat([
+							Buffer.from([0x02, 0xFF, 0x20]), data.slice(5, 5+2), // info
+							Buffer.from([0x04, 0x13]), data.slice(7, 7+4),       // volume
+							Buffer.from([0x52, 0x3B]), data.slice(11, 11+2)      // max flow
 						]);
 						offset = 0;
 					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x44, 0x13, 0x61, 0x5B, 0x61, 0x67]))) {
 						// Info, Volume, Max flow, flow temp, external temp
 						// convert into full frame
-						applayer = Buffer.concat([
-							Buffer.from([0x02, 0xFF, 0x20]), applayer.slice(5, 5+2), // info
-							Buffer.from([0x04, 0x13]), applayer.slice(7, 7+4),       // volume
-							Buffer.from([0x44, 0x13]), applayer.slice(11, 11+4),     // target volume
-							Buffer.from([0x61, 0x5B]), applayer.slice(15, 15+1),     // flow temp
-							Buffer.from([0x61, 0x67]), applayer.slice(16, 16+1)      // external temp
+						data = Buffer.concat([
+							Buffer.from([0x02, 0xFF, 0x20]), data.slice(5, 5+2), // info
+							Buffer.from([0x04, 0x13]), data.slice(7, 7+4),       // volume
+							Buffer.from([0x44, 0x13]), data.slice(11, 11+4),     // target volume
+							Buffer.from([0x61, 0x5B]), data.slice(15, 15+1),     // flow temp
+							Buffer.from([0x61, 0x67]), data.slice(16, 16+1)      // external temp
 						]);
 						offset = 0;
 					} else {
@@ -1767,7 +1716,7 @@ class WMBUS_DECODER {
 						this.logger.error(this.errorMessage);
 						return 0;
 					}
-					if (this.application_layer.full_frame_payload_crc != this.crc.crc(applayer)) {
+					if (this.application_layer.full_frame_payload_crc != this.crc.crc(data)) {
 						this.errorMessage = 'Kamstrup compact frame format payload CRC error';
 						this.errorCode = this.constant.ERR_CRC_FAILED;
 						this.logger.error(this.errorMessage);
@@ -1778,7 +1727,7 @@ class WMBUS_DECODER {
 				// no break so unhandled manufacturer for CI 0x79 are treated as default too
 			default:
 				// unsupported
-				this.errorMessage = 'Unsupported CI Field ' + current_ci.toString(16) + ", remaining payload is " + applayer.toString('hex', offset);
+				this.errorMessage = 'Unsupported CI Field ' + this.application_layer.cifield.toString(16) + ", remaining payload is " + data.toString('hex', offset);
 				this.errorCode = this.constant.ERR_UNKNOWN_CIFIELD;
 				this.logger.error(this.errorMessage);
 				return 0;
@@ -1790,9 +1739,7 @@ class WMBUS_DECODER {
 		this.encryptionMode = this.encryptionModes[this.config.mode];
 		switch (this.config.mode) {
 			case 0: // no encryption
-				this.isEncrypted = 0;
-				this.decrypted = 1;
-				payload = applayer.slice(offset);
+				payload = data.slice(offset);
 				break;
 
 			case 5: // data is encrypted with AES 128, dynamic init vector
@@ -1801,25 +1748,21 @@ class WMBUS_DECODER {
 
 				// data got decrypted by gateway or similar
 				if (this.alreadyDecrypted) {
-					payload = applayer.slice(offset);
+					payload = data.slice(offset);
 					this.logger.debug("Data already decrypted");
 					break;
 				}
-				this.isEncrypted = 1;
-				this.decrypted = 0;
 
 				if (this.aeskey) {
-						let encrypted_length = this.config.encrypted_blocks * this.constant.BLOCK_SIZE;
-						this.logger.debug("encrypted payload: " + applayer.slice(offset, offset+encrypted_length).toString('hex'));
+						let encrypted_length = this.config.encrypted_blocks * this.constant.AES_BLOCK_SIZE;
+						this.logger.debug("encrypted payload: " + data.slice(offset, offset+encrypted_length).toString('hex'));
 						if (this.config.mode == 5) {
-							payload = Buffer.concat([this.decrypt(applayer.slice(offset, offset+encrypted_length), this.aeskey), applayer.slice(offset+encrypted_length)]);
+							payload = Buffer.concat([this.decrypt(data.slice(offset, offset+encrypted_length), this.aeskey), data.slice(offset+encrypted_length)]);
 						} else { // mode 7
-							payload = Buffer.concat([this.decrypt_mode7(applayer.slice(offset, offset+encrypted_length), this.aeskey, applayer.slice(appStart, offset)), applayer.slice(offset+encrypted_length)]);
+							payload = Buffer.concat([this.decrypt_mode7(data.slice(offset, offset+encrypted_length), this.aeskey, data.slice(appStart, offset)), data.slice(offset+encrypted_length)]);
 						}
 						this.logger.debug("decrypted payload " + payload.toString('hex'));
-						if (payload.readUInt16LE(0) == 0x2f2f) {
-							this.decrypted = 1;
-						} else {
+						if (payload.readUInt16LE(0) != 0x2F2F) {
 							// Decryption verification failed
 							this.errorMessage = 'Decryption failed, wrong key?';
 							this.errorCode = this.constant.ERR_DECRYPTION_FAILED;
@@ -1839,14 +1782,12 @@ class WMBUS_DECODER {
 				this.errorMessage = 'Encryption mode ' + this.config.mode.toString(16) + ' not implemented';
 				this.errorCode = this.constant.ERR_UNKNOWN_ENCRYPTION;
 				this.logger.error(this.errorMessage);
-				this.isEncrypted = 1;
-				this.decrypted = 0;
 				return 0;
 		}
 
 		if (this.application_layer.cifield == this.constant.CI_RESP_SML_4 || this.application_layer.cifield == this.constant.CI_RESP_SML_12) {
 			// payload is SML encoded, that's not implemented
-			this.errorMessage = "payload is SML encoded, can't be decoded, SML payload is " . applayer.toString('hex', offset);
+			this.errorMessage = "payload is SML encoded, can't be decoded, SML payload is " . data.toString('hex', offset);
 			this.errorCode = this.constant.ERR_SML_PAYLOAD;
 			this.logger.error(this.errorMessage);
 			return 0;
@@ -1855,135 +1796,192 @@ class WMBUS_DECODER {
 		}
 	}
 
-	decodeLinkLayer(ll, applayer) {
-		this.link_layer = ll;
-		if ((typeof applayer === 'undefined') && (typeof ll.data !== 'undefined')) {
-			applayer = ll.data;
-		}
+	decodeLinkLayer(data, contains_crc) {
+		this.link_layer = {};
+		let i = 0;
+		// assume data starts with L field (as it should) 
+		// L field is total length without itself and CRC (for type A!)!
+		// L field might need adjustement by device class - e.g. AMBER includes its own CRC in it!
+		this.link_layer.lfield = data[i++];
+		this.link_layer.cfield = data[i++];
+		this.link_layer.address_raw = data.slice(i, i+8);
+		this.link_layer.mfield = data.readUInt16LE(i);
+		i += 2;
+		this.link_layer.afield_raw = data.slice(i, i+6);
+		this.link_layer.afield = data.readUInt32LE(i);
+		i += 4;
+		this.link_layer.afield_version = data[i++];
+		this.link_layer.afield_type = data[i++];
 
-		ll.afield_id = this.decodeBCD(8, ll.afield.slice(0, 4)).toString().padStart(8, '0');
-
-		if (ll.bframe) {
-			this.frame_type = this.constant.FRAME_TYPE_B;
-		}
-
-		let datalen;
-		//let msglen;
+		this.link_layer.manufacturer = this.manId2ascii(this.link_layer.mfield);
+		this.link_layer.afield_id = this.decodeBCD(8, this.link_layer.afield_raw).toString().padStart(8, '0');
 
 		if (this.frame_type == this.constant.FRAME_TYPE_A) {
-			// header block is 10 bytes + 2 bytes CRC, each following block is 16 bytes + 2 bytes CRC, the last block may be smaller
-			datalen = ll.lfield - (this.constant.DLL_SIZE - 1); // this is without CRCs and the lfield itself
-			this.block_count = Math.ceil(datalen / this.constant.BLOCK_SIZE);
-			//msglen = this.constant.TL_BLOCK_SIZE + this.crc_size + datalen + this.block_count * this.crc_size;
-			//this.logger.debug("calc len " + msglen + ", actual " + applayer.length);
+			let remainingSize = this.link_layer.lfield + 1 - this.constant.DLL_SIZE;
+			if (contains_crc) {
+				// check CRC of block 1
+				let crc = this.crc.crc(data.slice(0, this.constant.DLL_SIZE));
+				if (data.readUInt16BE(i) != crc) {
+					// CRC failed
+					this.errorCode == this.constant.ERR_CRC_FAILED;
+					this.errorMessage = "CRC for Data link layer failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(i).toString(16);
+					this.logger.error(this.errorMessage);
+					return 0;
+				}
+				i += 2;
 
-			//applayer = this.removeCRC(applayer); //substr($self->{msg},TL_BLOCK_SIZE + $self->{crc_size}));
+				// calc total remaining size including CRC
+				let blockCount = Math.ceil(remainingSize / 16);
+				let remainingTotalSize = blockCount * 2 + remainingSize;
+
+				if (remainingTotalSize + i > data.length) {
+					this.errorMessage = "application layer message too short, expected " + remainingTotalSize + ", got " + data.length + " bytes";
+					this.logger.debug(data.toString('hex'));
+					this.errorCode = this.constant.ERR_MSG_TOO_SHORT;
+					this.logger.error(this.errorMessage);
+					return 0;
+				}
+
+				// too much data
+				if (data.length > remainingTotalSize + i) {
+					this.remainingData = data.slice(remainingTotalSize);
+					data = data.slice(0, i + remainingTotalSize);
+				}
+
+				let new_data = Buffer.alloc(0);
+
+				// check remaining blocks and remove CRC
+				let bcount = 1;
+				do {
+					let blockSize = (i + this.constant.FRAME_A_BLOCK_SIZE + 2 <= data.length ? this.constant.FRAME_A_BLOCK_SIZE : data.length - 2 - i);
+					let block = data.slice(i, i + blockSize);
+					let crc = this.crc.crc(block);
+					i += blockSize;
+					if (data.readUInt16BE(i) != crc) {
+						// CRC failed
+						this.errorCode == this.constant.ERR_CRC_FAILED;
+						this.errorMessage = "CRC for block " + bcount + " failed! calc: " + crc.toString(16) + " read: " + data.readUInt16BE(i).toString(16);
+						this.logger.error(this.errorMessage);
+						return 0;
+					}
+
+					new_data = Buffer.concat([new_data, block]);
+					i += 2;
+					bcount++;
+				}
+				while (i < data.length);
+
+				// done
+				return new_data;
+			} // else
+			this.remainingData = data.slice(i + remainingSize);
+			return data.slice(i, i + remainingSize);
+
 		} else if (this.frame_type == this.constant.FRAME_TYPE_B) {
-			// FRAME TYPE B
-			// each block is at most 129 bytes long.
-			// first contains the header (TL_BLOCK), L field and trailing crc
-			// L field is included in crc calculation
-			// each following block contains only data and trailing crc
-			// not yet ported
 			this.errorCode == this.constant.ERR_LINK_LAYER_INVALID;
-			this.errorMessage = "Frame type B is not implemented (yet)!";
+			this.errorMessage = "Frame type " + this.frame_type + " is not implemented!";
 			this.logger.error(this.errorMessage);
 			return 0;
 		} else {
 			this.errorCode == this.constant.ERR_LINK_LAYER_INVALID;
-			this.errorMessage = "Unkown FRAME_TYPE! " + this.frame_type;
+			this.errorMessage = "Frame type " + this.frame_type + " is not implemented!";
 			this.logger.error(this.errorMessage);
 			return 0;
 		}
-
-		this.remainingData = undefined;
-		if (applayer.length > datalen) {
-			this.remainingData = applayer.slice(datalen);
-			applayer = applayer.slice(0, datalen);
-		} else if (applayer.length < datalen) {
-			this.errorMessage = "application layer message too short, expected " + datalen + ", got " + applayer.length + " bytes";
-			this.logger.debug(applayer.toString('hex'));
-			this.errorCode = this.constant.ERR_MSG_TOO_SHORT;
-			this.logger.error(this.errorMessage);
-			return 0;
-		}
-
-		// according to the MBus spec only upper case letters are allowed.
-		// some devices send lower case letters none the less
-		// convert to upper case to make them spec conformant
-		this.link_layer.manufacturer = this.manId2ascii(ll.mfield).toUpperCase();
-		this.link_layer.typestring =  this.validDeviceTypes[ll.afield_type] || 'unknown';
-		return applayer;
 	}
 
-	parse(ll, applayer, key, callback) {
-		if (typeof applayer === 'function') {
-			callback = applayer;
-			applayer = undefined;
-		} else if (typeof key === 'function') {
+	parse(raw_data, contains_crc, key, frame_type, callback) {
+		if (typeof frame_type === 'function') {
+			callback = frame_type;
+			frame_type = this.constant.FRAME_TYPE_A;
+		}
+		this.frame_type = frame_type;
+		
+		if (typeof key === 'function') {
 			callback = key;
 			key = undefined;
 		}
 
-		let removeCRC = (typeof ll.withCRC !== 'undefined' ? ll.withCRC : false);
-		if (removeCRC) {
-			applayer = this.removeCRC(applayer);
+		if (typeof crc_removed === 'function') {
+			callback = crc_removed;
+			crc_removed = true;
 		}
 
-		this.errorCode = this.constant.ERR_NO_ERROR;
-		this.errorMessage = '';
-		this.alreadyDecrypted = (typeof ll.decrypted !== 'undefined' ? ll.decrypted : false);
+		contains_crc = (typeof contains_crc !== 'undefined' ? contains_crc : false);
+		this.alreadyDecrypted = false;
+		if (typeof key === 'string') {
+			if (key.toUpperCase() === "DECRYPTED") {
+				this.alreadyDecrypted = true;
+				key = undefined;
+			} else { 
+				if (key.length == 16) { // plain-text key
+					key = Buffer.from(key);
+				} else if (key.length == 32) {
+					key = Buffer.from(key, 'hex');
+				} else {
+					key = undefined;
+					this.logger.error("Warning: invalid key length! Key rejected!");
+				}
+			}
+		}
+		this.aeskey = key;
 
-		if (typeof key !== 'undefined') {
-			this.aeskey = key;
-		}
-		applayer = (typeof applayer !== 'undefined' ? applayer : ll.data);
-		applayer = this.decodeLinkLayer(ll, applayer);
-		let ret = 0;
-		if (applayer) {
-			ret = this.decodeApplicationLayer(applayer);
-		}
-		if (ret == 1) { // all okay
-			callback && callback(undefined, this.collectData());
+		if (!Buffer.isBuffer(raw_data)) {
+			this.raw_data = Buffer.from(raw_data, 'hex');
 		} else {
-			//this.logger.error(this.errorMessage);
-			callback && callback({message: this.errorMessage, code: this.errorCode});
-		}
-	}
-
-	parseRaw(data, containsCRC, key, callback) {
-		let applayer;
-		let alreadyDec = false;
-
-		if ((typeof key !== 'undefined') && !Buffer.isBuffer(key) && (key === "DECRYPTED")) {
-			alreadyDec = true;
-			key = undefined;
+			this.raw_data = raw_data;
 		}
 
-		let result = {
-			decrypted: alreadyDec,
-			lfield: data[0],
-			cfield: data[1],
-			mfield: data.readUInt16LE(2),
-			manufacturer: this.manId2ascii(data.readUInt16LE(2)),
-			afield: data.slice(4, 10),
-			afield_id: data.readUInt32LE(4),
-			afield_ver: data[8],
-			afield_type: data[9],
-		};
+		let data = this.decodeLinkLayer(this.raw_data, contains_crc);
 
-		if (containsCRC) {
-			applayer = data.slice(this.constant.DLL_SIZE + this.constant.CRC_SIZE);
-			applayer = this.removeCRC(applayer);
-		} else {
-			applayer = data.slice(this.constant.DLL_SIZE);
+		if (Buffer.isBuffer(data)) { // seems to be all okay
+			this.logger.debug(data.toString('hex'));
+
+			let offset = 0;
+			let current_ci = data[offset];
+
+			if ((current_ci >= this.constant.CI_ELL_2) && (current_ci <= this.constant.CI_ELL_16)) {
+				// Extended Link Layer
+				this.logger.debug("Extended Link Layer");
+				let ell_return = this.decodeELL(data, offset);
+				if (Buffer.isBuffer(ell_return)) {
+					data = ell_return;
+					offset = 0;
+				} else {
+					offset = ell_return;
+				}
+				current_ci = data[offset];
+			}
+
+			if (current_ci == this.constant.CI_AFL) {
+				// Authentification and Fragmentation Layer
+				this.logger.debug("Authentification and Fragmentation Layer");
+				offset = this.decodeAFL(data, offset);
+				current_ci = data[offset];
+
+				if (this.afl.fcl_mf) {
+					this.errorMessage = "fragmented messages are not yet supported";
+					this.errorCode = this.constant.ERR_FRAGMENT_UNSUPPORTED;
+					this.logger.error(this.errorMessage);
+					return 0;
+				}
+			}
+
+			// we are finally at the application layer
+			let app_return = this.decodeApplicationLayer(data, offset);
+			if (app_return == 1) { // all okay
+				callback && callback(undefined, this.collectData());
+			} else {
+				callback && callback({message: this.errorMessage, code: this.errorCode});
+			}
+			return app_return;
 		}
-		this.parse(result, applayer, key, callback);
+		return 0;
 	}
 
 	collectData() {
 		let result = {};
-		let address = Buffer.concat([Buffer.alloc(2), this.link_layer.afield]);
+		let address = Buffer.concat([Buffer.alloc(2), this.link_layer.afield_raw]);
 		address.writeUInt16LE(this.link_layer.mfield, 0);
 
 		result.deviceInformation = {
@@ -1996,7 +1994,9 @@ class WMBUS_DECODER {
 			Version: (typeof this.application_layer.meter_vers !== 'undefined' ?  this.application_layer.meter_vers : this.link_layer.afield_ver),
 			Address: address.toString('hex')
 		}
+
 		result.dataRecord = [];
+
 		let count = 0;
 		this.dataRecords.forEach(function(item) {
 			count++;
@@ -2016,7 +2016,6 @@ class WMBUS_DECODER {
 
 		return result;
 	}
-
 }
 
 module.exports = WMBUS_DECODER;

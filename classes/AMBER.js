@@ -47,49 +47,18 @@ class AMBER_WMBUS {
 				that.logger('telegram received - check sum failed: ' + that.frameBuffer.toString('hex'));
 			} else {
 				that.logger('telegram received: ' + that.frameBuffer.toString('hex'));
-				that.parseLinkLayer(that.frameBuffer.slice(0, that.telegramLength-2));
+				let data = that.frameBuffer.slice(2, that.telegramLength-2);
+				// fix L field
+				data[0] = data[0] - 2;
+				if (typeof this.incomingData === 'function') {
+					this.incomingData({frame_type: 'A', contains_crc: false, raw_data: data, rssi: 0, ts: new Date().getTime()});
+				}
 			}
 			that.frameBuffer = that.frameBuffer.slice(that.telegramLength);
 			that.telegramLength = -1;
 		}
 	}
-	
-	parseLinkLayer(data) {
-		let i = 2;
-		
-		let l_field = data[i++]-2;
-		let c_field = data[i++];
-		let address = false;
-		
-		let m_field = data.readUInt16LE(i);
-		let manufacturer_id = String.fromCharCode((m_field >> 10) + 64) + String.fromCharCode(((m_field >> 5) & 0x1f) + 64) + String.fromCharCode((m_field & 0x1f) + 64);
-		i += 2;
-		let a_field = data.slice(i, i+6);;
-		let a_field_id = a_field.readUInt32LE(0).toString(16);
-		i += 4;
-		let a_field_ver = data[i++];
-		let a_field_type = data[i++];
 
-		let result = {
-			bframe: false,
-			lfield: l_field,
-			cfield: c_field,
-			mfield: m_field,
-			manufacturer: manufacturer_id,
-			afield: a_field,
-			afield_id: a_field_id,
-			afield_type: a_field_type,
-			afield_ver: a_field_ver,
-			data: data.slice(i)
-		};
-
-		//this.logger(result);		
-		
-		if (typeof this.incomingData === 'function') {
-			this.incomingData(result);
-		}
-	}
-	
 	init(dev, opts) {
         this.port = new SerialPort(dev, opts);
         this.port.on('data', this.onData.bind(this));

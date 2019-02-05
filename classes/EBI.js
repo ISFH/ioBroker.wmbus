@@ -758,22 +758,22 @@ class EBI_WMBUS extends EBI {
         let opts = payload[0] * 0x100 + payload[1];
         let rssi = false;
         let ts = false;
-        let type_b = false;
+        let frame_type = 'A';
         let l_field = false;
         let c_field = false;
-        let address = false;
         let i = 2;
         if (opts & 0x8000) { // rssi
             rssi = payload.readInt8(i);
             i++;
         }
         if (opts & 0x0010) { // frame type B
-            type_b = true;
+            frame_type = 'B';
         }
         if (opts & 0x0008) { // timestamp since power on
             ts = payload.readUInt32BE(i) / 32768;
             i += 4;
         }
+		let dll = i;
         if (opts & 0x0004) { // L field
             l_field = payload[i];
             i++;
@@ -800,25 +800,20 @@ class EBI_WMBUS extends EBI {
 			a_field_type = payload[i++];
         }
 
-        let res = {
+		if (!l_field || !c_field || !m_field || !a_field) {
+			this.logger("Warning: Telegram with incomplete data link layer received!");
+		}
+
+		let data = {
+			frame_type: frame_type, 
+			contains_crc: false, 
+			raw_data: data.slice(dll),
 			rssi: rssi,
-			bframe: type_b,
-			TS: ts,
-			lfield: l_field,
-			cfield: c_field,
-			mfield: m_field,
-			manufacturer: manufacturer_id,
-			afield: a_field,
-			afield_id: a_field_id,
-			afield_type: a_field_type,
-			afield_ver: a_field_ver,
-			data: payload.slice(i)
+			ts: ts
 		};
 
-		//this.logger(res);
-
 		if (typeof this.incomingData === 'function') {
-			this.incomingData(res);
+			this.incomingData(data);
 		}
     }
 }

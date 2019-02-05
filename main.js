@@ -76,9 +76,16 @@ process.on('uncaughtException', err => {
     onClose();
 });
 
-function dataReceived(raw_data) {
+function parseID(data) {
+	man2ascii(idhex) {
+		return String.fromCharCode((idhex >> 10) + 64) + String.fromCharCode(((idhex >> 5) & 0x1f) + 64) + String.fromCharCode((idhex & 0x1f) + 64);
+	}
+	return man2ascii(data.readUInt16LE(2)) + "-" + data.readUInt32LE(4).toString(16).padStart(8,'0');
+}
+
+function dataReceived(data) {
     // id == 'PIK-20104317'
-    let id = raw_data.manufacturer + '-' + raw_data.afield_id;
+    let id = parseID(data.raw_data);
     // look for AES key
     let key;
     if ((typeof adapter.config.aeskeys !== 'undefined') && adapter.config.aeskeys.length) {
@@ -112,7 +119,7 @@ function dataReceived(raw_data) {
         }
     }
 
-    decoder.parse(raw_data, raw_data.data, key, function(err, data) {
+    decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, function(err, data) {
         if (err) {
             adapter.log.error('Error parseing wMBus device: ' + id);
             if (err.code == 9) { // ERR_NO_AESKEY
