@@ -136,7 +136,7 @@ function dataReceived(data) {
 function updateDevice(deviceId, data) {
     adapter.log.debug('Updating device: ' + deviceId);
     initializeDeviceObjects(deviceId, data, () => {
-        updateDeviceStates(wmBusDevices.deviceId.deviceNamespace, deviceId, data);
+        updateDeviceStates(wmBusDevices[deviceId], data);
     });
 }
 
@@ -171,14 +171,13 @@ function initializeDeviceObjects(deviceId, data, callback) {
         });
     }
     
-    if (typeof wmBusDevices.deviceId !== 'undefined') {
+    if (typeof wmBusDevices[deviceId] !== 'undefined') {
         callback();
         return;
     }
 
-    const deviceNamespace = deviceId;
-    wmBusDevices.deviceId = {};
-    wmBusDevices.deviceId.deviceNamespace = deviceNamespace;
+    wmBusDevices[deviceId] = deviceId;
+    let deviceNamespace = wmBusDevices[deviceId];
     adapter.setObjectNotExists(deviceNamespace, {
         type: 'device',
         common: {name: deviceNamespace},
@@ -230,7 +229,7 @@ function initializeDeviceObjects(deviceId, data, callback) {
 }
 
 
-function updateDeviceStates(deviceNamespace, deviceId, data, callback) {
+function updateDeviceStates(deviceNamespace, data, callback) {
     Object.keys(data.deviceInformation).forEach(function (key) {
         if ((typeof stateValues[deviceNamespace + '.info.' + key] === 'undefined') || stateValues[deviceNamespace + '.info.' + key] !== data.deviceInformation[key]) {
             stateValues[deviceNamespace + '.info.' + key] = data.deviceInformation[key];

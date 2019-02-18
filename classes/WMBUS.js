@@ -1812,6 +1812,7 @@ class WMBUS_DECODER {
 		this.link_layer.afield_type = data[i++];
 
 		this.link_layer.manufacturer = this.manId2ascii(this.link_layer.mfield);
+		this.link_layer.typestring = this.validDeviceTypes[this.link_layer.afield_type] || 'unknown';
 		this.link_layer.afield_id = this.decodeBCD(8, this.link_layer.afield_raw).toString().padStart(8, '0');
 
 		if (this.frame_type == this.constant.FRAME_TYPE_A) {
@@ -2038,7 +2039,7 @@ class WMBUS_DECODER {
             Medium: (typeof this.application_layer.meter_devtypestring !== 'undefined' ? this.application_layer.meter_devtypestring : this.link_layer.typestring),
 			Status: this.application_layer.status,
 			StatusString: this.application_layer.statusstring,
-			Version: (typeof this.application_layer.meter_vers !== 'undefined' ?  this.application_layer.meter_vers : this.link_layer.afield_ver),
+			Version: (typeof this.application_layer.meter_vers !== 'undefined' ?  this.application_layer.meter_vers : this.link_layer.afield_version),
 			Address: address.toString('hex')
 		}
 
