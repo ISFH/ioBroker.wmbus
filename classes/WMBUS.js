@@ -535,6 +535,22 @@ class WMBUS_DECODER {
 				unit    : '',
 				calcFunc: this.valueCalcHex,
 			},
+			//  Digital Output (binary) 
+			VIF_DIGITAL_OUTPUT_BINARY: {
+				typeMask: 0b01111111,
+				expMask : 0b00000000,
+				type    : 0b00011010,
+				bias    : 0,
+				unit    : ''
+			},
+			//  Digital Input (binary) 
+			VIF_DIGITAL_INPUT_BINARY: {
+				typeMask: 0b01111111,
+				expMask : 0b00000000,
+				type    : 0b00011011,
+				bias    : 0,
+				unit    : ''
+			},
 			//   Duration since last readout [sec(s)..day(s)]
 			VIF_DURATION_SINCE_LAST_READOUT: {
 				typeMask: 0b01111100,
@@ -543,6 +559,14 @@ class WMBUS_DECODER {
 				bias    : 0,
 				unit    : 's',
 				calcFunc: this.valueCalcTimeperiod,
+			},
+			//   dimensionless / no VIF
+			VIF_DIMENSIONLESS: {
+				typeMask: 0b01111111,
+				expMask : 0b00000000,
+				type    : 0b00111010,
+				bias    : 0,
+				unit    : ''
 			},
 			//  10nnnn-9 Volts
 			VIF_VOLTAGE: {
