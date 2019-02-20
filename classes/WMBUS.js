@@ -13,6 +13,7 @@
 
 const crypto = require('crypto');
 const aesCmac = require('node-aes-cmac').aesCmac;
+const VIFInfo = require('./VIFInfo.js');
 
 class CRC {
 	constructor(polynom, initValue, finalXor) {
@@ -152,671 +153,6 @@ class WMBUS_DECODER {
 			// see http://www.st.com/content/ccc/resource/technical/document/application_note/3f/fb/35/5a/25/4e/41/ba/DM00233038.pdf/files/DM00233038.pdf/jcr:content/translations/en.DM00233038.pdf
 			FRAME_TYPE_A: 'A',
 			FRAME_TYPE_B: 'B',
-		};
-
-		// VIF types (Value Information Field), see page 32
-		this.VIFInfo = {
-			//  10(nnn-3) Wh  0.001Wh to 10000Wh
-			VIF_ENERGY_WATT: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b00000000,
-				bias    : -3,
-				unit    : 'Wh',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn) J		 0.001kJ to 10000kJ
-			VIF_ENERGY_JOULE: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b00001000,
-				bias    : 0,
-				unit    : 'J',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn-6) m3  0.001l to 10000l
-			VIF_VOLUME: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b00010000,
-				bias    : -6,
-				unit    : 'm³',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn-3) kg  0.001kg to 10000kg
-			VIF_MASS: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b00011000,
-				bias    : -3,
-				unit    : 'kg',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  seconds
-			VIF_ON_TIME_SEC: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100000,
-				bias    : 0,
-				unit    : 'sec',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  minutes
-			VIF_ON_TIME_MIN: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100001,
-				bias    : 0,
-				unit    : 'min',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  hours
-			VIF_ON_TIME_HOURS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100010,
-				bias    : 0,
-				unit    : 'hours',
-			},
-			//  days
-			VIF_ON_TIME_DAYS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100011,
-				bias    : 0,
-				unit    : 'days',
-			},
-			//  seconds
-			VIF_OP_TIME_SEC: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100100,
-				bias    : 0,
-				unit    : 'sec',
-			},
-			//  minutes
-			VIF_OP_TIME_MIN: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100101,
-				bias    : 0,
-				unit    : 'min',
-			},
-			//  hours
-			VIF_OP_TIME_HOURS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100110,
-				bias    : 0,
-				unit    : 'hours',
-			},
-			//  days
-			VIF_OP_TIME_DAYS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100111,
-				bias    : 0,
-				unit    : 'days',
-			},
-			//  10(nnn-3) W   0.001W to 10000W
-			VIF_ELECTRIC_POWER: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b00101000,
-				bias    : -3,
-				unit    : 'W',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn) J/h   0.001kJ/h to 10000kJ/h
-			VIF_THERMAL_POWER: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b00110000,
-				bias    : 0,
-				unit    : 'J/h',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn-6) m3/h 0.001l/h to 10000l/h
-			VIF_VOLUME_FLOW: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b00111000,
-				bias    : -6,
-				unit    : 'm³/h',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn-7) m3/min 0.0001l/min to 10000l/min
-			VIF_VOLUME_FLOW_EXT1: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b01000000,
-				bias    : -7,
-				unit    : 'm³/min',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn-9) m3/s 0.001ml/s to 10000ml/s
-			VIF_VOLUME_FLOW_EXT2: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b01001000,
-				bias    : -9,
-				unit    : 'm³/s',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nnn-3) kg/h 0.001kg/h to 10000kg/h
-			VIF_MASS_FLOW: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b01010000,
-				bias    : -3,
-				unit    : 'kg/h',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nn-3) °C 0.001°C to 1°C
-			VIF_FLOW_TEMP: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b01011000,
-				bias    : -3,
-				unit    : '°C',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nn-3) °C 0.001°C to 1°C
-			VIF_RETURN_TEMP: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b01011100,
-				bias    : -3,
-				unit    : '°C',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nn-3) K 1mK to 1000mK
-			VIF_TEMP_DIFF: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b01100000,
-				bias    : -3,
-				unit    : 'K',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nn-3) °C 0.001°C to 1°C
-			VIF_EXTERNAL_TEMP: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b01100100,
-				bias    : -3,
-				unit    : '°C',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10(nn-3) bar  1mbar to 1000mbar
-			VIF_PRESSURE: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b01101000,
-				bias    : -3,
-				unit    : 'bar',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  data type G
-			VIF_TIME_POINT_DATE: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01101100,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcDate,
-			},
-			//  data type F
-			VIF_TIME_POINT_DATE_TIME: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01101101,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcDateTime,
-			},
-			// Unit for Heat Cost Allocator, dimensonless
-			VIF_HCA: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01101110,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcNumeric,
-			},
-			// Fabrication No
-			VIF_FABRICATION_NO: {
-				typeMask	: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01111000,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcNumeric,
-			},
-			// Eigentumsnummer (used by Easymeter even though the standard allows this only for writing to a slave)
-			VIF_OWNER_NO: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01111001,
-				bias    : 0,
-				unit    : '',
-			},
-			//  seconds
-			VIF_AVERAGING_DURATION_SEC: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110000,
-				bias    : 0,
-				unit    : 'sec',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  minutes
-			VIF_AVERAGING_DURATION_MIN: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110001,
-				bias    : 0,
-				unit    : 'min',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  hours
-			VIF_AVERAGING_DURATION_HOURS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110010,
-				bias    : 0,
-				unit    : 'hours',
-			},
-			//  days
-			VIF_AVERAGING_DURATION_DAYS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110011,
-				bias    : 0,
-				unit    : 'days',
-			},
-			//  seconds
-			VIF_ACTUALITY_DURATION_SEC: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110100,
-				bias    : 0,
-				unit    : 'sec',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  minutes
-			VIF_ACTUALITY_DURATION_MIN: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110101,
-				bias    : 0,
-				unit    : 'min',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  hours
-			VIF_ACTUALITY_DURATION_HOURS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110110,
-				bias    : 0,
-				unit    : 'hours',
-			},
-			//  days
-			VIF_ACTUALITY_DURATION_DAYS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110111,
-				bias    : 0,
-				unit    : 'days',
-			}
-		};
-
-		// Codes used with extension indicator $FD, see 8.4.4 on page 80
-		this.VIFInfo_FD = {
-			//  Credit of 10nn-3 of the nominal local legal currency units
-			VIF_CREDIT: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b00000000,
-				bias    : -3,
-				unit    : '€',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  Debit of 10nn-3 of the nominal local legal currency units
-			VIF_DEBIT: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b00000100,
-				bias    : -3,
-				unit    : '€',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  Access number (transmission count)
-			VIF_ACCESS_NO: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00001000,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  Medium (as in fixed header)
-			VIF_MEDIUM: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00001001,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  Parameter set identification
-			VIF_PARAMETER_SET_IDENTIFICATION: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00001011,
-				bias    : 0,
-				unit    : ''
-			},
-			//  Model / Version
-			VIF_MODEL_VERSION: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00001100,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  Error flags (binary)
-			VIF_ERROR_FLAGS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00010111,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcHex,
-			},
-			//  Digital Output (binary) 
-			VIF_DIGITAL_OUTPUT_BINARY: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00011010,
-				bias    : 0,
-				unit    : ''
-			},
-			//  Digital Input (binary) 
-			VIF_DIGITAL_INPUT_BINARY: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00011011,
-				bias    : 0,
-				unit    : ''
-			},
-			//   Duration since last readout [sec(s)..day(s)]
-			VIF_DURATION_SINCE_LAST_READOUT: {
-				typeMask: 0b01111100,
-				expMask : 0b00000011,
-				type    : 0b00101100,
-				bias    : 0,
-				unit    : 's',
-				calcFunc: this.valueCalcTimeperiod,
-			},
-			//   dimensionless / no VIF
-			VIF_DIMENSIONLESS: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00111010,
-				bias    : 0,
-				unit    : ''
-			},
-			//  10nnnn-9 Volts
-			VIF_VOLTAGE: {
-				typeMask: 0b01110000,
-				expMask : 0b00001111,
-				type    : 0b01000000,
-				bias    : -9,
-				unit    : 'V',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//  10nnnn-12 Ampere
-			VIF_ELECTRICAL_CURRENT: {
-				typeMask: 0b01110000,
-				expMask : 0b00001111,
-				type    : 0b01010000,
-				bias    : -12,
-				unit    : 'A',
-				calcFunc: this.valueCalcNumeric,
-			},
-			//   reception level of a received radio device.
-			VIF_RECEPTION_LEVEL: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01110001,
-				bias    : 0,
-				unit    : 'dBm',
-				calcFunc: this.valueCalcNumeric,
-			},
-			// Reserved
-			VIF_FD_RESERVED: {
-				typeMask: 0b01110000,
-				expMask : 0b00000000,
-				type    : 0b01110000,
-				bias    : 0,
-				unit    : 'Reserved',
-			}
-		};
-		// Codes used with extension indicator $FB
-		this.VIFInfo_FB = {
-			//  Energy 10(n-1) MWh  0.1MWh to 1MWh
-			VIF_ENERGY: {
-				typeMask: 0b01111110,
-				expMask : 0b00000001,
-				type    : 0b00000000,
-				bias    : -1,
-				unit    : 'MWh',
-				calcFunc: this.valueCalcNumeric,
-			},
-		};
-		// Codes used for an enhancement of VIFs other than $FD and $FB
-		this.VIFInfo_other = {
-			VIF_ERROR_NONE: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00000000,
-				bias    : 0,
-				unit    : 'No error',
-			},
-			VIF_TOO_MANY_DIFES: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00000001,
-				bias    : 0,
-				unit    : 'Too many DIFEs',
-			},
-			VIF_ILLEGAL_VIF_GROUP: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00001100,
-				bias    : 0,
-				unit    : 'Illegal VIF-Group',
-			},
-			VIF_PER_SECOND: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100000,
-				bias    : 0,
-				unit    : 'per second',
-			},
-			VIF_PER_MINUTE: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100001,
-				bias    : 0,
-				unit    : 'per minute',
-			},
-			VIF_PER_HOUR: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100010,
-				bias    : 0,
-				unit    : 'per hour',
-			},
-			VIF_PER_DAY: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100011,
-				bias    : 0,
-				unit    : 'per day',
-			},
-			VIF_PER_WEEK: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100100,
-				bias    : 0,
-				unit    : 'per week',
-			},
-			VIF_PER_MONTH: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100101,
-				bias    : 0,
-				unit    : 'per month',
-			},
-			VIF_PER_YEAR: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100110,
-				bias    : 0,
-				unit    : 'per year',
-			},
-			VIF_PER_REVOLUTION: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00100111,
-				bias    : 0,
-				unit    : 'per revolution/measurement',
-			},
-			VIF_PER_INCREMENT_INPUT: {
-				typeMask: 0b01111110,
-				expMask : 0b00000000,
-				type    : 0b00101000,
-				bias    : 0,
-				unit    : 'increment per input pulse on input channnel //',
-				calcFunc: this.valueCalcNumeric,
-			},
-			VIF_PER_INCREMENT_OUTPUT: {
-				typeMask: 0b01111110,
-				expMask : 0b00000000,
-				type    : 0b00101010,
-				bias    : 0,
-				unit    : 'increment per output pulse on output channnel //',
-				calcFunc: this.valueCalcNumeric,
-			},
-			VIF_PER_LITER: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00101100,
-				bias    : 0,
-				unit    : 'per liter',
-			},
-			VIF_START_DATE_TIME: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00111001,
-				bias    : 0,
-				unit    : 'start date(/time) of',
-			},
-			VIF_ACCUMULATION_IF_POSITIVE: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b00111011,
-				bias    : 0,
-				unit    : 'Accumulation only if positive contribution',
-			},
-			VIF_DURATION_NO_EXCEEDS: {
-				typeMask: 0b01110111,
-				expMask : 0b00000000,
-				type    : 0b01000001,
-				bias    : 0,
-				unit    : '// of exceeds',
-				calcFunc: this.valueCalcu,
-			},
-			VIF_DURATION_LIMIT_EXCEEDED: {
-				typeMask: 0b01110000,
-				expMask : 0b00000000,
-				type    : 0b01010000,
-				bias    : 0,
-				unit    : 'duration of limit exceeded',
-				calcFunc: this.valueCalcufnn,
-			},
-			VIF_MULTIPLICATIVE_CORRECTION_FACTOR: {
-				typeMask: 0b01111000,
-				expMask : 0b00000111,
-				type    : 0b01110000,
-				bias    : -6,
-				unit    : '',
-			},
-			VIF_MULTIPLICATIVE_CORRECTION_FACTOR_1000: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01111101,
-				bias    : 0,
-				unit    : '',
-				calcFunc: this.valueCalcMultCorr1000,
-			},
-			VIF_FUTURE_VALUE: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01111110,
-				bias    : 0,
-				unit    : '',
-			},
-			VIF_MANUFACTURER_SPECIFIC: {
-				typeMask: 0b01111111,
-				expMask : 0b00000000,
-				type    : 0b01111111,
-				bias    : 0,
-				unit    : 'manufacturer specific',
-			}
-		};
-		// For Easymeter (manufacturer specific)
-		this.VIFInfo_ESY = {
-			VIF_ELECTRIC_POWER_PHASE: {
-				typeMask: 0b01000000,
-				expMask : 0b00000000,
-				type    : 0b00000000,
-				bias    : -2,
-				unit    : 'W',
-				calcFunc: this.valueCalcNumeric,
-			},
-			VIF_ELECTRIC_POWER_PHASE_NO: {
-				typeMask: 0b01111110,
-				expMask : 0b00000000,
-				type    : 0b00101000,
-				bias    : 0,
-				unit    : 'phase //',
-				calcFunc: this.valueCalcNumeric,
-			}
-		};
-		// For Kamstrup (manufacturer specific)
-		this.VIFInfo_KAM = {
-			VIF_KAMSTRUP_INFO: {
-				typeMask: 0b00000000,
-				expMask : 0b00000000,
-				type    : 0b00000000,
-				bias    : 0,
-				unit    : '',
-			}
-		};
-
-		// catch unknown VIF(E)
-		this.VIFInfo_unknown = {
-			VIF_TYPE_MANUFACTURER_SPECIFIC: {
-				typeMask: 0b00000000,
-				expMask : 0b00000000,
-				type    : 0b00000000,
-				bias    : 0,
-				unit    : '',
-			}
 		};
 
 		// see 4.2.3, page 24
@@ -994,32 +330,73 @@ class WMBUS_DECODER {
 	valueCalcHex(value, VIB) {
 		return value.toString(16);
 	}
-
-	valueCalcu(value, VIB) {
-		return (value & 0b00001000 ? 'upper' : 'lower') + ' limit';
+	
+	valueCorrectionAdd(ext, VIB) {
+		let exponent = ext.vif & ext.info.expMask;
+		let value = Math.pow(10, exponent + ext.info.bias);
+		VIB.value += value;
 	}
-
-	valueCalcufnn(value, VIB) {
-		let result = (value & 0b00001000 ? 'upper' : 'lower') + ' limit';
-		result += ', ' + (value & 0b00000100 ? 'first' : 'last');
-		result += ', duration ' + (value & 0b11);
-		return result;
+	
+	valueCorrectionMult(ext, VIB) {
+		let exponent = ext.vif & ext.info.expMask;
+		let value = Math.pow(10, exponent + ext.info.bias);
+		VIB.value *= value;
+		
+		if (value < 1 && VIB.value.toFixed(0) != VIB.value) {
+			VIB.value = VIB.value.toFixed(value.toString().length - 2);
+		}
 	}
-
-	valueCalcMultCorr1000(value, VIB) {
-		VIB.value *= 1000;
-		return "correction by factor 1000";
+	
+	valueExtDescription(ext, VIB) {
+		VIB.description += (VIB.description.length ? "; " : "") + ext.info.unit;
+	}
+	
+	valueExtUnit(ext, VIB) {
+		VIB.unit += (VIB.unit.length ? " " : "") + ext.info.unit;
+	}
+	
+	valueDurationDescription(ext, VIB) {
+		let value = (ext.vif & ext.info.expMask) + ext.info.bias;
+		VIB.description += (VIB.description.length ? "; " : "") + ext.info.unit + ": " + value.toString();
 	}
 
 	valueCalcTimeperiod(value, VIB) {
 		switch (VIB.exponent) {
 			case 0: VIB.unit = 's'; break;
-			case 1: VIB.unit = 'm'; break;
+			case 1: VIB.unit = 'min'; break;
 			case 2: VIB.unit = 'h'; break;
 			case 3: VIB.unit = 'd'; break;
 			default: VIB.unit = '';
 		}
 		return value;
+	}
+	
+	valueCalcTimeperiodPP(value, VIB) {
+		switch (VIB.exponent) {
+			case 0: VIB.unit = 'h'; break;
+			case 1: VIB.unit = 'd'; break;
+			case 2: VIB.unit = 'months'; break;
+			case 3: VIB.unit = 'years'; break;
+			default: VIB.unit = '';
+		}
+		return value;
+	}
+	
+	valueCalcMap(type) {
+		switch (type) {
+			case "numeric": return this.valueCalcNumeric;
+			case "date": return this.valueCalcDate;
+			case "datetime": return this.valueCalcDateTime;
+			case "hex": return this.valueCalcHex;
+			case "timeperiod": return this.valueCalcTimeperiod;
+			case "timeperiodPP": return this.valueCalcTimeperiodPP;
+			case "correctionAdd": return this.valueCorrectionAdd;
+			case "correctionMult": return this.valueCorrectionMult;
+			case "extendDescription": return this.valueExtDescription;
+			case "extendUnit": return this.valueExtUnit;
+			case "duration": return this.valueDurationDescription;
+			default: return "";
+		}
 	}
 
 	type2string(type) {
@@ -1119,20 +496,25 @@ class WMBUS_DECODER {
 		function processVIF(vif, info) {
 			VIB.exponent = vif & info.expMask;
 			VIB.unit = info.unit;
+			VIB.description = info.description;
+			if (VIB.type === "VIF_TYPE_MANUFACTURER_UNKOWN") {
+				VIB.description = "0x" + vif.toString(16) + " " + VIB.description;
+			}
 			if ((typeof VIB.exponent !== 'undefined') && (typeof info.bias !== 'undefined')) {
-				VIB.valueFactor = Math.pow(10, (VIB.exponent + info.bias))
+				VIB.valueFactor = Math.pow(10, (VIB.exponent + info.bias));
 			} else {
-				info.valueFactor = 1;
+				VIB.valueFactor = 1;
 			}
 
-			if (typeof info.calcFunc === 'function') {
-				VIB.calcFunc = info.calcFunc.bind(this);
+			let func = this.valueCalcMap(info.calcFunc);
+			if (typeof func === 'function') {
+				VIB.calcFunc = func.bind(this);
 			}
 		}
 
 		let vif;
 		let vifs = [];
-		let vifTable = this.VIFInfo;
+		let vifTable = VIFInfo.primary;
 		let type = 'primary';
 
 		let VIB = {};
@@ -1159,28 +541,27 @@ class WMBUS_DECODER {
 				offset += len;
 				if (vif & 0x80) { continue; } else { break;	}
 			} else if (vif == 0xFB) { // just switch table
-				vifTable = this.VIFInfo_FB;
+				vifTable = VIFInfo.primaryFB;
 				vif = data[offset++];
 				type += '-FB';
 			} else if (vif == 0xFD) { // just switch table
-				vifTable = this.VIFInfo_FD;
+				vifTable = VIFInfo.primaryFD;
 				vif = data[offset++];
 				type += '-FD';
 			} else if (vif == 0xFF) { // manufacturer specific
-				let tab = "VIFInfo_" + this.link_layer.manufacturer;
 				vif = data[offset++];
-				if (typeof this[tab] !== 'undefined') {
-					vifTable = this[tab];
+				if (typeof VIFInfo.manufacturer[this.link_layer.manufacturer] !== 'undefined') {
+					vifTable =  VIFInfo.manufacturer[this.link_layer.manufacturer];
 					type += '-' + this.link_layer.manufacturer;
 				} else {
 					this.logger.error("WARNING: Unkown manufacturer specific vif: 0x" + vif.toString(16));
-					vifTable = this.VIFInfo_unknown;
+					vifTable = VIFInfo.unknown;
 				}
 			}
 
 			vifs.push({ table: vifTable, vif: vif & 0x7F, type: type });
 			type = 'extension';
-			vifTable = this.VIFInfo_other;
+			vifTable = VIFInfo.extension;
 		} while (vif & 0x80);
 
 		VIB.ext = [];
@@ -1197,8 +578,8 @@ class WMBUS_DECODER {
 						VIB.type = "VIF" + item.type.replace("primary", "") + " 0x" + item.vif.toString(16);
 						VIB.errorCode = this.constant.ERR_UNKNOWN_VIFE;
 					} else {
-						processVIF.call(this, item.vif, item.table[Object.keys(item.table)[tabIndex]]);
 						VIB.type = Object.keys(item.table)[tabIndex];
+						processVIF.call(this, item.vif, item.table[Object.keys(item.table)[tabIndex]]);
 					}
 				}
 			} else { // extension
@@ -1371,22 +752,16 @@ class WMBUS_DECODER {
 					this.logger.debug(dataRecord.VIB.type + ": Empty DataRecord?");
 				}
 
-				dataRecord.VIB.extension = '';
 				dataRecord.VIB.ext.forEach(function (ext) {
 					if (typeof ext.info === 'undefined') {
-						dataRecord.VIB.extension += "Unknown VIFExt 0x" + ext.vif.toString(16) + ", ";
+						this.logger.error("Unknown VIFExt 0x" + ext.vif.toString(16));
 						return;
 					}
-					dataRecord.VIB.extension += ext.info.unit + ", ";
-					if (typeof ext.info.calcFunc === 'function') {
-						let ret = ext.info.calcFunc.call(this, ext.vif, dataRecord.VIB);
-						if (ret) {
-							dataRecord.VIB.extension += ret + ", ";
-						}
+					let func = this.valueCalcMap(ext.info.calcFunc);
+					if (typeof func === 'function') {
+						func.call(this, ext, dataRecord.VIB);
 					}
 				}.bind(this));
-
-				dataRecord.VIB.extension = dataRecord.VIB.extension.substr(0, dataRecord.VIB.extension.length - 2);
 
 				//this.logger.debug(dataRecord);
 				this.dataRecords.push(dataRecord);
@@ -2076,8 +1451,7 @@ class WMBUS_DECODER {
 				number: count,
 				value: item.VIB.value,
 				unit: item.VIB.unit,
-				type: item.VIB.type,
-				extension: item.VIB.extension,
+				type: item.VIB.description,
 				tariff: item.DIB.tariff,
 				storageNo: item.DIB.storageNo,
 				devUnit: item.DIB.devUnit,
