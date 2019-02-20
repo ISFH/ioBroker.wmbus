@@ -33,7 +33,7 @@ class CRC {
 		}
 	}
 
-	crc(data) {
+	calc(data) {
 		if (!Buffer.isBuffer(data)) {
 			data = Buffer.from(data);
 		}
@@ -1587,7 +1587,7 @@ class WMBUS_DECODER {
 
 			// is this already decrypted? check against CRC
 			let rawCRC = data.readUInt16LE(offset);
-			let rawCRCcalc = this.crc.crc(data.slice(offset+2));
+			let rawCRCcalc = this.crc.calc(data.slice(offset+2));
 			this.logger.debug("crc " + rawCRC.toString(16) + ", calculated " + rawCRCcalc.toString(16));
 
 			if (rawCRC == rawCRCcalc) {
@@ -1620,7 +1620,7 @@ class WMBUS_DECODER {
 				offset += 2;
 				// PayloadCRC is a cyclic redundancy check covering the remainder of the frame (excluding the CRC fields)
 				// payloadCRC is also encrypted
-				let crc = this.crc.crc(data.slice(2));
+				let crc = this.crc.calc(data.slice(2));
 				if (this.ell.crc != crc) {
 					this.logger.debug("crc " + this.ell.crc.toString(16) + ", calculated " + crc.toString(16));
 					this.errorMessage = "Payload CRC check failed on ELL" + (isEncrypted ? ", wrong AES key?" : "");
@@ -1693,7 +1693,7 @@ class WMBUS_DECODER {
 					offset += 2;
 					this.application_layer.full_frame_payload_crc = data.readUInt16LE(offset);
 					offset += 2;
-					if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x44, 0x13]))) {
+					if (this.application_layer.format_signature == this.crc.calc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x44, 0x13]))) {
 						// Info, Volume, Target Volume
 						// convert into full frame
 						data = Buffer.concat([
@@ -1702,7 +1702,7 @@ class WMBUS_DECODER {
 							Buffer.from([0x44, 0x13]), data.slice(11, 11+4)      // target volume
 						]);
 						offset = 0;
-					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x16, 0x44, 0x16]))) {
+					} else if (this.application_layer.format_signature == this.crc.calc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x16, 0x44, 0x16]))) {
 						// Info, ???
 						// convert into full frame
 						data = Buffer.concat([
@@ -1711,7 +1711,7 @@ class WMBUS_DECODER {
 							Buffer.from([0x44, 0x16]), data.slice(11, 11+4)      // ???
 						]);
 						offset = 0;
-					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x52, 0x3B]))) {
+					} else if (this.application_layer.format_signature == this.crc.calc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x52, 0x3B]))) {
 						// Info, Volume, Max flow
 						// convert into full frame
 						data = Buffer.concat([
@@ -1720,7 +1720,7 @@ class WMBUS_DECODER {
 							Buffer.from([0x52, 0x3B]), data.slice(11, 11+2)      // max flow
 						]);
 						offset = 0;
-					} else if (this.application_layer.format_signature == this.crc.crc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x44, 0x13, 0x61, 0x5B, 0x61, 0x67]))) {
+					} else if (this.application_layer.format_signature == this.crc.calc(Buffer.from([0x02, 0xFF, 0x20, 0x04, 0x13, 0x44, 0x13, 0x61, 0x5B, 0x61, 0x67]))) {
 						// Info, Volume, Max flow, flow temp, external temp
 						// convert into full frame
 						data = Buffer.concat([
@@ -1737,7 +1737,7 @@ class WMBUS_DECODER {
 						this.logger.error(this.errorMessage);
 						return 0;
 					}
-					if (this.application_layer.full_frame_payload_crc != this.crc.crc(data)) {
+					if (this.application_layer.full_frame_payload_crc != this.crc.calc(data)) {
 						this.errorMessage = 'Kamstrup compact frame format payload CRC error';
 						this.errorCode = this.constant.ERR_CRC_FAILED;
 						this.logger.error(this.errorMessage);
@@ -1843,7 +1843,7 @@ class WMBUS_DECODER {
 			let remainingSize = this.link_layer.lfield + 1 - this.constant.DLL_SIZE;
 			if (contains_crc) {
 				// check CRC of block 1
-				let crc = this.crc.crc(data.slice(0, this.constant.DLL_SIZE));
+				let crc = this.crc.calc(data.slice(0, this.constant.DLL_SIZE));
 				if (data.readUInt16BE(i) != crc) {
 					// CRC failed
 					this.errorCode == this.constant.ERR_CRC_FAILED;
@@ -1878,7 +1878,7 @@ class WMBUS_DECODER {
 				do {
 					let blockSize = (i + this.constant.FRAME_A_BLOCK_SIZE + 2 <= data.length ? this.constant.FRAME_A_BLOCK_SIZE : data.length - 2 - i);
 					let block = data.slice(i, i + blockSize);
-					let crc = this.crc.crc(block);
+					let crc = this.crc.calc(block);
 					i += blockSize;
 					if (data.readUInt16BE(i) != crc) {
 						// CRC failed
@@ -1928,7 +1928,7 @@ class WMBUS_DECODER {
 			let block3;
 			if (this.link_layer.lfield >= this.constant.FRAME_B_BLOCK_SIZE) { // message has 3 blocks
 				let block3 = data.slice(this.constant.FRAME_B_BLOCK_SIZE, data.length - 2);
-				let crc = this.crc.crc(block3);
+				let crc = this.crc.calc(block3);
 				if (data.readUInt16BE(data.length - 2) != crc) {
 					// CRC failed
 					this.errorCode == this.constant.ERR_CRC_FAILED;
@@ -1941,7 +1941,7 @@ class WMBUS_DECODER {
 			}
 
 			let len2 = this.link_layer.lfield + 1 - (block3.length ? block3.length + 2 : 0) - this.constant.DLL_SIZE - 2;
-			let crc = this.crc.crc(data.slice(0, len2 + this.constant.DLL_SIZE));
+			let crc = this.crc.calc(data.slice(0, len2 + this.constant.DLL_SIZE));
 			if (data.readUInt16BE(len2 + this.constant.DLL_SIZE) != crc) {
 				// CRC failed
 				this.errorCode == this.constant.ERR_CRC_FAILED;
