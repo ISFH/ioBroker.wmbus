@@ -279,6 +279,7 @@ function main() {
     
     let port = (typeof adapter.config.serialPort !== 'undefined' ? adapter.config.serialPort : '/dev/ttyWMBUS');
     let baud = (typeof adapter.config.serialBaudRate !== 'undefined' ? adapter.config.serialBaudRate : 9600);
+    let mode = (typeof adapter.config.wmbusMode !== 'undefined' ? adapter.config.wmbusMode : 'T');
     
     try {
         if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js')) {
@@ -287,7 +288,7 @@ function main() {
             adapter.log.debug('Created device of type: ' + receiverAvailable[adapter.config.deviceType + '.js']);
             decoder = new WMBusDecoder({debug: adapter.log.debug, error: adapter.log.error});
             receiver.incomingData = dataReceived;
-            receiver.init(port, {baudRate: parseInt(baud)});
+            receiver.init(port, {baudRate: parseInt(baud)}, mode);
             receiver.port.on('error', serialError);
         } else {
             adapter.log.error('No or unkown adapter type selected! ' + adapter.config.deviceType);

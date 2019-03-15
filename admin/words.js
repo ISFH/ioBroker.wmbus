@@ -110,6 +110,17 @@ systemDictionary = {
         "pl":"wMBus Receiver",
         "it":"wMBus Receiver"
     },
+    "wMBus Mode":{
+        "en": "wMBus Mode",
+        "de": "wMBus Mode",
+        "ru": "wMBus Mode",
+        "pt": "wMBus Mode",
+        "nl": "wMBus Mode",
+        "fr": "wMBus Mode",
+        "es": "wMBus Mode",
+        "pl": "wMBus Mode",
+        "it": "wMBus Mode"
+    },
     "Blacklisted Devices":{
         "en": "Blacklisted Devices",
         "de": "Blockierte Geräte",

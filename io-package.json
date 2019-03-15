@@ -53,6 +53,7 @@
     "native": {
         "deviceType": "amber",
         "serialPort": "/dev/ttyWMBUS",
+        "wmbusMode": "T",
         "serialBaudRate": 9600,
         "alwaysUpdate": true,
         "aeskeys": [],
