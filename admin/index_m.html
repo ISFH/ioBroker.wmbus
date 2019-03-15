@@ -90,7 +90,7 @@
 			Object.keys(list).forEach(function(item) {
 				let dev = item.substr(0, item.length - 3);
 				text += '<option value="' + dev + '" ' + ((actualValue === dev) ? 'selected' : '') + '>' + list[item] + '</option>';
-            }
+            });
             $deviceType.html(text).select();
         });
     }
@@ -190,10 +190,7 @@
             <div class="row">
                 <div class="col s12 m4">
                     <label class="translate" for="deviceType">wMBus Receiver</label>
-                    <select class="value" id="deviceType">
-                            <option value="EBI">Embit EMB-WMB169/868</option>
-                            <option value="AMBER">Amber Wireless AMB8465</option>
-                    </select>
+                    <select class="value" id="deviceType"></select>
                 </div>
             </div>
             <div class="row">

@@ -8,6 +8,7 @@
 'use strict';
 
 const utils = require(__dirname + '/lib/utils'); // Get common adapter utils
+const fs = require('fs');
 const WMBusDecoder = require('./lib/wmbus_decoder.js');
 const SerialPort = require('serialport');
 const receiverPath = '/lib/receiver/';
@@ -267,7 +268,7 @@ function main() {
     let baud = (typeof adapter.config.serialBaudRate !== 'undefined' ? adapter.config.serialBaudRate : 9600);
     
     try {
-		if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js') {
+		if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js')) {
 			ReceiverModule = require('.' + receiverPath + adapter.config.deviceType + '.js');
 			receiver = new ReceiverModule(adapter.log.debug); 
             adapter.log.debug('Created device of type: ' + receiverAvailable[adapter.config.deviceType + '.js']);
