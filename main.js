@@ -1,28 +1,22 @@
 /**
 # vim: tabstop=4 shiftwidth=4 expandtab
  *
- * NUT adapter
- *
  * Adapter loading data from an wM-Bus devices
  *
  */
-/* jshint -W097 */
-/* jshint strict:true */
-/* jslint node: true */
-/* jslint esversion: 6 */
 
 'use strict';
 
-const path       = require('path');
-const utils      = require(path.join(__dirname, 'lib', 'utils')); // Get common adapter utils
-const EBI_WMBUS = require('./classes/EBI.js');
-const WMBUS_DECODER = require('./classes/WMBUS.js');
-const AMBER_WMBUS = require('./classes/AMBER.js');
+const utils = require(__dirname + '/lib/utils'); // Get common adapter utils
+const WMBusDecoder = require('./lib/wmbus_decoder.js');
 const SerialPort = require('serialport');
+const receiverPath = '/lib/receiver/';
+let ReceiverModule;
 
 const adapter = new utils.Adapter('wmbus');
 
 let receiver = null;
+let receiverAvailable = {};
 let decoder = null;
 let wmBusDevices = {};
 
@@ -243,7 +237,7 @@ function updateDeviceStates(deviceNamespace, data, callback) {
             stateValues[deviceNamespace + stateId] = item.value;
             
             adapter.log.debug('Value ' + deviceNamespace + stateId + ': ' + item.value);
-            adapter.setState(deviceNamespace + stateId, item.value, true, err => { if (err) adapter.log.error(err) }); //{
+            adapter.setState(deviceNamespace + stateId, item.value, true, err => { if (err) adapter.log.error(err) });
         }
     });
     callback && callback();
@@ -255,32 +249,35 @@ function serialError(err) {
     onClose();
 }
 
+function getAllReceivers() {
+	receiverAvailable = {};
+	let json = JSON.parse(fs.readFileSync(adapter.adapterDir + receiverPath + 'receiver.json', 'utf8'));
+	Object.keys(json).forEach(function (item) {
+		if (fs.existsSync(adapter.adapterDir + receiverPath + item)) {
+			receiverAvailable[item] = json[item];
+		}
+	});
+}
 
 function main() {
+	getAllReceivers();
     setConnected(false);
     
-    if (!adapter.config.deviceType) {
-        adapter.config.deviceType = 'EBI';
-    }
     let port = (typeof adapter.config.serialPort !== 'undefined' ? adapter.config.serialPort : '/dev/ttyWMBUS');
     let baud = (typeof adapter.config.serialBaudRate !== 'undefined' ? adapter.config.serialBaudRate : 9600);
     
     try {
-        switch (adapter.config.deviceType) {
-            case 'EBI':
-                receiver = new EBI_WMBUS(adapter.log.debug); 
-                adapter.log.debug('Created device of type: ' + adapter.config.deviceType);
-                break;
-            case 'AMBER':
-                receiver = new AMBER_WMBUS(adapter.log.debug);
-                adapter.log.debug('Created device of type: ' + adapter.config.deviceType);
-                break;
-            default: adapter.log.error('Unkown adapter type selected! ' + adapter.config.deviceType);
-        }
-        decoder = new WMBUS_DECODER({debug: adapter.log.debug, error: adapter.log.error});
-        receiver.incomingData = dataReceived;
-        receiver.init(port, {baudRate: parseInt(baud)});
-        receiver.port.on('error', serialError);
+		if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js') {
+			ReceiverModule = require('.' + receiverPath + adapter.config.deviceType + '.js');
+			receiver = new ReceiverModule(adapter.log.debug); 
+            adapter.log.debug('Created device of type: ' + receiverAvailable[adapter.config.deviceType + '.js']);
+			decoder = new WMBusDecoder({debug: adapter.log.debug, error: adapter.log.error});
+			receiver.incomingData = dataReceived;
+			receiver.init(port, {baudRate: parseInt(baud)});
+			receiver.port.on('error', serialError);
+		} else {
+			adapter.log.error('No or unkown adapter type selected! ' + adapter.config.deviceType);
+		}
     } catch(e) {
         adapter.log.error("Error opening serial port " + port + " with baudrate " + baud);
         adapter.log.error(e);
@@ -309,6 +306,11 @@ function processMessage(obj) {
                         adapter.log.warn('Module serialport is not available');
                         adapter.sendTo(obj.from, obj.command, [{comName: 'Not available'}], obj.callback);
                     }
+                }
+                break;
+			case 'listReceiver':
+                if (obj.callback) {
+                    adapter.sendTo(obj.from, obj.command, receiverAvailable, obj.callback);
                 }
                 break;
             case 'needsKey':

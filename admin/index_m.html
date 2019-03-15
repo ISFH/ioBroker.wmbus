@@ -68,6 +68,32 @@
             $port.html(text).select();
         });
     }
+	
+    function getReceiverList(actualValue) {
+        let timeoutReceiver = setTimeout(function () {
+            getReceiverList(actualValue);
+        }, 2000);
+
+        sendTo(null, 'listReceiver', null, function (list) {
+            if (timeoutReceiver) {
+                clearTimeout(timeoutReceiver);
+                timeoutReceiver = null;
+            }
+            if (!list || !Object.keys(list).length) {
+                timeoutReceiver = setTimeout(function () {
+                    getReceiverList(actualValue);
+                }, 1000);
+                return;
+            }
+            var $deviceType = $('#deviceType');
+            var text = '';
+			Object.keys(list).forEach(function(item) {
+				let dev = item.substr(0, item.length - 3);
+				text += '<option value="' + dev + '" ' + ((actualValue === dev) ? 'selected' : '') + '>' + list[item] + '</option>';
+            }
+            $deviceType.html(text).select();
+        });
+    }
 
     function getNeedsKey() {
         timeoutKeys = setTimeout(function () {
@@ -91,14 +117,13 @@
         });
     }
 
-
     // the function loadSettings has to exist ...
     function load(settings, onChange) {
         if (!settings) return;
         
-        settings.deviceType = settings.deviceType || 'EBI';
+        settings.deviceType = settings.deviceType || 'ebi';
 		settings.serialPort = settings.serialPort || '/dev/ttyUSB0';
-		settings.serialBaudRate = settings.serialBaudRate || '1200';
+		settings.serialBaudRate = settings.serialBaudRate || '9600';
 		settings.alwaysUpdate = settings.alwaysUpdate || false;        
 
         $('.value').each(function () {            
@@ -119,6 +144,7 @@
             }
         });
 		getComPorts(settings.serialPort);
+		getReceiverList(settings.deviceType);
         onChng = onChange;
 
         onChange(false);
