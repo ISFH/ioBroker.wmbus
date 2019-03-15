@@ -18,6 +18,7 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 * [WMBus Stack module](https://github.com/mhop/fhem-mirror/blob/master/fhem/FHEM/WMBus.pm)
 * [ioBroker.mbus](https://github.com/Apollon77/ioBroker.mbus)
 * [Original WMBUS Stack: wm-bus](https://github.com/soef/wm-bus)
+* [M-Bus protocol](http://www.m-bus.com/files/MBDOC48.PDF)
 * [OMS Specifications](https://oms-group.org/en/download4all/oms-specification/)
 
 ## Changelog
