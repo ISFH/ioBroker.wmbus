@@ -3,10 +3,10 @@
         "name": "wmbus",
         "version": "0.3.0",
         "news": {
-            "0.3.0" {
+            "0.3.0": {
                 "en": "blacklist; mostly refactoring"
             },
-            "0.2.0" {
+            "0.2.0": {
                 "en": "mode 7 security; many other improvements"
             },
             "0.1.0": {
