@@ -1,6 +1,6 @@
 {
   "name": "iobroker.wmbus",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "wMBus Adapter",
   "author": {
     "name": "Christian Landvogt",
@@ -8,16 +8,17 @@
   },
   "contributors": [],
   "homepage": "",
-  "license": "MIT",
+  "license": "GPL-2.0",
   "keywords": [
     "ioBroker",
     "wireless",
     "mbus",
-    "wmbus"
+    "wmbus",
+    "meter"
   ],
   "repository": {
     "type": "git",
-    "url": "https://bitbucket.org/isfh-ees/iobroker.wmbus/"
+    "url": "https://github.com/ISFH/iobroker.wmbus/"
   },
   "dependencies": {
     "node-aes-cmac": "^0.1.1",
