@@ -14,13 +14,15 @@
     "wireless",
     "mbus",
     "wmbus",
-    "meter"
+    "meter",
+    "oms"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ISFH/iobroker.wmbus/"
   },
   "dependencies": {
+    "@iobroker/adapter-core": "^1.0.3",
     "node-aes-cmac": "^0.1.1",
     "serialport": "https://github.com/lvogt/node-serialport/tarball/v6.2.2-symlinks"
   },

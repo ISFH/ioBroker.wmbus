@@ -7,12 +7,32 @@
 
 'use strict';
 
-const utils = require(__dirname + '/lib/utils'); // Get common adapter utils
+const utils = require('@iobroker/adapter-core');
+
 const fs = require('fs');
 const WMBusDecoder = require('./lib/wmbus_decoder.js');
 const SerialPort = require('serialport');
 const receiverPath = '/lib/receiver/';
 let ReceiverModule;
+
+let adapter;
+
+function startAdapter(options) {
+    options = options || {};
+    Object.assign(options, {
+        name: 'wmbus'
+    });
+
+    adapter = new utils.Adapter(options);
+
+    adapter.on('ready', main);
+    adapter.on('message', processMessage);
+    adapter.on('unload', callback => {
+        onClose(callback);
+    });
+
+     return adapter;
+});
 
 const adapter = new utils.Adapter('wmbus');
 
@@ -39,10 +59,6 @@ function setConnected(isConnected) {
     }
 }
 
-adapter.on('ready', main);
-
-adapter.on('message', processMessage);
-
 function onClose(callback) {
     try { 
         receiver.port.close(); 
@@ -56,20 +72,6 @@ function onClose(callback) {
     callback && callback();
 }
 
-adapter.on('unload', callback => {
-    onClose(callback);
-});
-
-process.on('SIGINT', () => {
-    onClose();
-});
-
-process.on('uncaughtException', err => {
-    if (adapter && adapter.log) {
-        adapter.log.warn('Exception: ' + err);
-    }
-    onClose();
-});
 
 function parseID(data) {
     function man2ascii(idhex) {
@@ -331,3 +333,11 @@ function processMessage(obj) {
         }
     }
 }
+
+// If started as allInOne/compact mode => return function to create instance
+if (module && module.parent) {
+    module.exports = startAdapter;
+} else {
+    // or start the instance directly
+    startAdapter();
+} 
