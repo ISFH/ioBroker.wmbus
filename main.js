@@ -217,7 +217,12 @@ function initializeDeviceObjects(deviceId, data, callback) {
                 data.dataRecord.forEach(function(item) {
                     currentState = {};
                     currentState.id = '.data.' + item.number + '-' + item.storageNo + '-' + item.type;
-                    currentState.name = item.type + ' (' + item.functionFieldText + ')';
+                    let name = item.description + ' (';
+                    if (item.tariff) {
+                        name += 'Tariff ' + item.tariff + '; ';
+                    }
+                    name +=  item.functionFieldText + ')';
+                    currentState.name = name;
                     currentState.unit = item.unit;
                     currentState.Tariff = item.tariff;
                     currentState.StorageNumber = item.storageNo;
