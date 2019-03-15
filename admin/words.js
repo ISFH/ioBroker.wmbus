@@ -109,6 +109,17 @@ systemDictionary = {
         "es":"wMBus Receiver",
         "pl":"wMBus Receiver",
         "it":"wMBus Receiver"
+    },
+    "Blacklisted Devices":{
+        "en": "Blacklisted Devices",
+        "de": "Blockierte Geräte",
+        "ru": "Blacklisted Devices",
+        "pt": "Blacklisted Devices",
+        "nl": "Blacklisted Devices",
+        "fr": "Blacklisted Devices",
+        "es": "Blacklisted Devices",
+        "pl": "Blacklisted Devices",
+        "it": "Blacklisted Devices"
     }
 };
 
