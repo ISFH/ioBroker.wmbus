@@ -8,12 +8,10 @@
 'use strict';
 
 const utils = require('@iobroker/adapter-core');
-
 const fs = require('fs');
+
 const WMBusDecoder = require('./lib/wmbus_decoder.js');
 const SerialPort = require('serialport');
-const receiverPath = '/lib/receiver/';
-let ReceiverModule;
 
 let adapter;
 
@@ -31,16 +29,15 @@ function startAdapter(options) {
         onClose(callback);
     });
 
-     return adapter;
-});
+    return adapter;
+}
 
-const adapter = new utils.Adapter('wmbus');
-
+const receiverPath = '/lib/receiver/';
+let ReceiverModule;
 let receiver = null;
 let receiverAvailable = {};
 let decoder = null;
 let wmBusDevices = {};
-
 let connected = null;
 let stateValues = {};
 let needsKey = [];
