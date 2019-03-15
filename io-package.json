@@ -4,28 +4,28 @@
         "version": "0.1.0",
         "news": {
             "0.1.0": {
-		"en": "initial version",
-		"de": "Initiale Version",
-		"ru": "Первоначальный адаптер",
-		"pt": "Versão inicial",
-		"nl": "Eerste release",
-		"fr": "Version initiale",
-		"es": "initial version",
-		"pl": "initial version",
-		"it": "initial version"
+        "en": "initial version",
+        "de": "Initiale Version",
+        "ru": "Первоначальный адаптер",
+        "pt": "Versão inicial",
+        "nl": "Eerste release",
+        "fr": "Version initiale",
+        "es": "initial version",
+        "pl": "initial version",
+        "it": "initial version"
             }
         },
-	"title": "Wireless M-Bus",
+    "title": "Wireless M-Bus",
         "desc": {
             "en": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-	    "de": "Empfange Daten von Wireless Meter-Bus (wM-Bus) Geräten (zB Gas- oder Stromzähler)",
-	    "ru": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-	    "pt": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-	    "nl": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-	    "fr": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-	    "es": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-	    "pl": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-	    "it": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters"
+        "de": "Empfange Daten von Wireless Meter-Bus (wM-Bus) Geräten (zB Gas- oder Stromzähler)",
+        "ru": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
+        "pt": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
+        "nl": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
+        "fr": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
+        "es": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
+        "pl": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
+        "it": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters"
         },
         "authors": [
             "Christian Landvogt <landvogt@isfh.de"
@@ -45,10 +45,11 @@
     },
     "native": {
         "deviceType": "EBI",
-	"serialPort": "/dev/ttyWMBUS",
-	"serialBaudRate": 9600,
-	"alwaysUpdate": true,
-	"aeskeys": []
+        "serialPort": "/dev/ttyWMBUS",
+        "serialBaudRate": 9600,
+        "alwaysUpdate": true,
+        "aeskeys": [],
+        "blacklist": []
     },
     "instanceObjects": [
         {
@@ -70,7 +71,7 @@
                 "write": false,
                 "def":   false
             },
-			"_id":  "info.rawdata",
+            "_id":  "info.rawdata",
             "type": "state",
             "common": {
                 "role":  "value",

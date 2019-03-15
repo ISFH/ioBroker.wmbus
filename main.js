@@ -81,6 +81,15 @@ function parseID(data) {
 function dataReceived(data) {
     // id == 'PIK-20104317'
     let id = parseID(data.raw_data);
+    
+    // check blacklist
+    if ((typeof adapter.config.blacklist !== 'undefined') && adapter.config.blacklist.length) {
+        let found = adapter.config.blacklist.find(function(item) { if (typeof item.id === 'undefined') return false; else return item.id == this; }, id);
+        if (typeof found !== 'undefined') { // found
+            return;
+        }
+    }
+    
     // look for AES key
     let key;
     if ((typeof adapter.config.aeskeys !== 'undefined') && adapter.config.aeskeys.length) {
@@ -251,34 +260,34 @@ function serialError(err) {
 }
 
 function getAllReceivers() {
-	receiverAvailable = {};
-	let json = JSON.parse(fs.readFileSync(adapter.adapterDir + receiverPath + 'receiver.json', 'utf8'));
-	Object.keys(json).forEach(function (item) {
-		if (fs.existsSync(adapter.adapterDir + receiverPath + item)) {
-			receiverAvailable[item] = json[item];
-		}
-	});
+    receiverAvailable = {};
+    let json = JSON.parse(fs.readFileSync(adapter.adapterDir + receiverPath + 'receiver.json', 'utf8'));
+    Object.keys(json).forEach(function (item) {
+        if (fs.existsSync(adapter.adapterDir + receiverPath + item)) {
+            receiverAvailable[item] = json[item];
+        }
+    });
 }
 
 function main() {
-	getAllReceivers();
+    getAllReceivers();
     setConnected(false);
     
     let port = (typeof adapter.config.serialPort !== 'undefined' ? adapter.config.serialPort : '/dev/ttyWMBUS');
     let baud = (typeof adapter.config.serialBaudRate !== 'undefined' ? adapter.config.serialBaudRate : 9600);
     
     try {
-		if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js')) {
-			ReceiverModule = require('.' + receiverPath + adapter.config.deviceType + '.js');
-			receiver = new ReceiverModule(adapter.log.debug); 
+        if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js')) {
+            ReceiverModule = require('.' + receiverPath + adapter.config.deviceType + '.js');
+            receiver = new ReceiverModule(adapter.log.debug); 
             adapter.log.debug('Created device of type: ' + receiverAvailable[adapter.config.deviceType + '.js']);
-			decoder = new WMBusDecoder({debug: adapter.log.debug, error: adapter.log.error});
-			receiver.incomingData = dataReceived;
-			receiver.init(port, {baudRate: parseInt(baud)});
-			receiver.port.on('error', serialError);
-		} else {
-			adapter.log.error('No or unkown adapter type selected! ' + adapter.config.deviceType);
-		}
+            decoder = new WMBusDecoder({debug: adapter.log.debug, error: adapter.log.error});
+            receiver.incomingData = dataReceived;
+            receiver.init(port, {baudRate: parseInt(baud)});
+            receiver.port.on('error', serialError);
+        } else {
+            adapter.log.error('No or unkown adapter type selected! ' + adapter.config.deviceType);
+        }
     } catch(e) {
         adapter.log.error("Error opening serial port " + port + " with baudrate " + baud);
         adapter.log.error(e);
@@ -309,7 +318,7 @@ function processMessage(obj) {
                     }
                 }
                 break;
-			case 'listReceiver':
+            case 'listReceiver':
                 if (obj.callback) {
                     adapter.sendTo(obj.from, obj.command, receiverAvailable, obj.callback);
                 }
