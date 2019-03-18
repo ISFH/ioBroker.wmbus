@@ -2,9 +2,9 @@
 # ioBroker.wmbus
 =================
 
-This adapter allows to receive wireless M-Bus data from supported receivers.
-
-Currently only Embit WMB modules which implement the EBI interface protocol are well supported. However, the device configuration is currently hardcoded to T-Mode 868.950[MHz] @66.666[kbps]. Crude support for Amber Wireless AMB8465 receiver is implemented as well - device is only opened, no configuration is sent, so it must be configured beforehand.
+This adapter allows to receive wireless M-Bus data from supported receivers:
+* Embit WMB modules
+* Amber Wireless AMB8465 (**Beware:** UART_CMD_Out_Enable is enabled!)
 
 The WMBUS stack been "re-ported" from FHEM project and was extensively fixed and refactored. Testing was done with raw data picked up on the internet, OMS sample data and some test data from the jmbus library. Some edge cases are still untested.
 
@@ -21,7 +21,18 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 * [M-Bus protocol](http://www.m-bus.com/files/MBDOC48.PDF)
 * [OMS Specifications](https://oms-group.org/en/download4all/oms-specification/)
 
+## ToDo
+
+* CUL support?
+* IMST support?
+
 ## Changelog
+
+### 0.4.0
+* (ChL) better Amber Stick support
+* (ChL) Compact mode?
+* (ChL) Nicer state names
+* (ChL) wMBus mode partially selectable
 
 ### 0.3.0
 * (ChL) Implemented all VIF types from MBus doc
@@ -38,4 +49,8 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 
 ### 0.1.0
 * (ChL) initial release
+
+## License
+
+Licensed under GPLv2. See [LICENSE](LICENSE) and [NOTICE](NOTICE)
 
