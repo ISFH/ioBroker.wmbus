@@ -20,7 +20,7 @@
         "name": "IMST iM871A",
         "modes": {
             "CA": "C Mode (frame type A)",
-            "CA": "C Mode (frame type B)",
+            "CB": "C Mode (frame type B)",
             "S": "S Mode",
             "T": "T Mode"
         }
