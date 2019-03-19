@@ -31,6 +31,8 @@
     let timeout;
     let needsKey = [];
     let onChng;
+    let devices = {};
+    let config;
     
     function getComPorts(actualValue) {
         counter++;
@@ -87,11 +89,14 @@
             }
             var $deviceType = $('#deviceType');
             var text = '';
+            devices = list;
             Object.keys(list).forEach(function(item) {
                 let dev = item.substr(0, item.length - 3);
-                text += '<option value="' + dev + '" ' + ((actualValue === dev) ? 'selected' : '') + '>' + list[item] + '</option>';
+                text += '<option value="' + dev + '" ' + ((actualValue === dev) ? 'selected' : '') + '>' + list[item].name + '</option>';
             });
             $deviceType.html(text).select();
+
+            updateModes();
         });
     }
 
@@ -143,15 +148,28 @@
                 });
             }
         });
+        config = settings;
         getComPorts(settings.serialPort);
         getReceiverList(settings.deviceType);
         onChng = onChange;
+
+        $('#deviceType').on('change', updateModes);
 
         onChange(false);
         M.updateTextFields();  // function Materialize.updateTextFields(); to reinitialize all the Materialize labels on the page if you are dynamically adding inputs.
         values2table('aeskeys', settings.aeskeys, onChange);
         values2table('blacklist', settings.blacklist, onChange);
         getNeedsKey();
+    }
+
+    function updateModes() {
+        let dev = $('#deviceType').val() + ".js";
+        var $deviceType = $('#deviceType');
+        var text = '';
+        Object.keys(devices[dev].modes).forEach(function(item) {
+            text += '<option value="' + item + '" ' + ((config.wmbusMode === item) ? 'selected' : '') + '>' + devices[dev].modes[item] + '</option>';
+        });
+        $('#wmbusMode').html(text).select();
     }
 
     // ... and the function save has to exist.
@@ -197,12 +215,7 @@
                 </div>
                 <div class="col s4 m4">
                     <label class="translate" for="wmbusMode">wMBus Mode</label>
-                    <select class="value" id="wmbusMode">
-                        <option value="C">C Mode</option>
-                        <option value="S">S Mode</option>
-                        <option value="T">T Mode</option>
-                        <option value="CT">C/T Mode (only Amber!)</option>
-                    </select>
+                    <select class="value" id="wmbusMode"></select>
                 </div>
             </div>
             <div class="row">

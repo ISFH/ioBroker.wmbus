@@ -3,8 +3,10 @@
 =================
 
 This adapter allows to receive wireless M-Bus data from supported receivers:
+
 * Embit WMB modules
-* Amber Wireless AMB8465 (**Beware:** UART_CMD_Out_Enable is enabled!)
+* Amber Wireless AMB8465 (**Beware:** Command mode (UART_CMD_Out_Enable) is enabled!)
+* IMST iM871A (limited support)
 
 The WMBUS stack been "re-ported" from FHEM project and was extensively fixed and refactored. Testing was done with raw data picked up on the internet, OMS sample data and some test data from the jmbus library. Some edge cases are still untested.
 
@@ -14,7 +16,7 @@ If the adapter receives encrypted telegrams the AES key configuration tab should
 
 If the parser fails the raw telegram data will be saved to the info.rawdata state.
 
-### Links:
+## Links:
 * [WMBus Stack module](https://github.com/mhop/fhem-mirror/blob/master/fhem/FHEM/WMBus.pm)
 * [ioBroker.mbus](https://github.com/Apollon77/ioBroker.mbus)
 * [Original WMBUS Stack: wm-bus](https://github.com/soef/wm-bus)
@@ -23,10 +25,13 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 
 ## ToDo
 
+* sending telegrams for S mode receivers?
 * CUL support?
-* IMST support?
 
 ## Changelog
+
+### 0.4.1
+* (ChL) basic IMST iM871A support
 
 ### 0.4.0
 * (ChL) better Amber Stick support

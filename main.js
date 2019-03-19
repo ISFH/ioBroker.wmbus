@@ -285,7 +285,7 @@ function main() {
         if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js')) {
             ReceiverModule = require('.' + receiverPath + adapter.config.deviceType + '.js');
             receiver = new ReceiverModule(adapter.log.debug); 
-            adapter.log.debug('Created device of type: ' + receiverAvailable[adapter.config.deviceType + '.js']);
+            adapter.log.debug('Created device of type: ' + receiverAvailable[adapter.config.deviceType + '.js'].name);
             decoder = new WMBusDecoder({debug: adapter.log.debug, error: adapter.log.error});
             receiver.incomingData = dataReceived;
             receiver.init(port, {baudRate: parseInt(baud)}, mode);

@@ -1,4 +1,28 @@
 {
-    "ebi.js": "Embit EMB-WMB169/868",
-    "amber.js": "Amber Wireless AMB8465"
+    "ebi.js": {
+        "name": "Embit EMB-WMB169/868",
+        "modes": {
+            "C": "C Mode",
+            "S": "S Mode",
+            "T": "T Mode"
+        }
+    },
+    "amber.js": {
+        "name": "Amber Wireless AMB8465",
+        "modes": {
+            "C": "C Mode",
+            "S": "S Mode",
+            "T": "T Mode",
+            "CT": "C/T Mode"
+        }
+    },
+    "imst.js": {
+        "name": "IMST iM871A",
+        "modes": {
+            "CA": "C Mode (frame type A)",
+            "CA": "C Mode (frame type B)",
+            "S": "S Mode",
+            "T": "T Mode"
+        }
+    }
 }
