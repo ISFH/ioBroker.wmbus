@@ -1,5 +1,14 @@
-/**
+/*
 # vim: tabstop=4 shiftwidth=4 expandtab
+ *
+ * ioBroker wmbus adapter
+ *
+ * Copyright (c) 2019 ISFH
+ * This work is licensed under the terms of the GPL2 license.
+ * See NOTICE for detailed listing of other contributors
+ *
+ * This file contains large portions from the ioBroker mbus adapter
+ * by Apollon77 which is originally published under the MIT License.
  *
  * Adapter loading data from an wM-Bus devices
  *

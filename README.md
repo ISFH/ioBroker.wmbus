@@ -2,13 +2,13 @@
 # ioBroker.wmbus
 =================
 
-This adapter allows to receive wireless M-Bus data from supported receivers:
+This adapter allows to receive wireless M-Bus data from supported receivers. The extent of device implementation varies, but wMBus modes can be configured for all listed devices.
 
 * Embit WMB modules
 * Amber Wireless AMB8465 (**Beware:** Command mode (UART_CMD_Out_Enable) is enabled!)
-* IMST iM871A (limited support)
+* IMST iM871A
 
-The WMBUS stack been "re-ported" from FHEM project and was extensively fixed and refactored. Testing was done with raw data picked up on the internet, OMS sample data and some test data from the jmbus library. Some edge cases are still untested.
+The WMBUS stack has been "re-ported" from FHEM project and was extensively fixed and refactored. Testing was done with raw data picked up on the internet, OMS sample data and some test data from the jmbus library. Some edge cases are still untested.
 
 The device creation, updating, etc is mostly based of Apollon77's M-Bus adapter (see below).
 
@@ -29,6 +29,9 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 * CUL support?
 
 ## Changelog
+
+### 0.4.2
+* (ChL) Small fixes
 
 ### 0.4.1
 * (ChL) basic IMST iM871A support
@@ -56,6 +59,8 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 * (ChL) initial release
 
 ## License
+
+Copyright (c) 2019 ISFH - Institute for Solar Energy Research www.isfh.de
 
 Licensed under GPLv2. See [LICENSE](LICENSE) and [NOTICE](NOTICE)
 
