@@ -53,7 +53,7 @@
         "enabled": true,
         "extIcon": "https://raw.githubusercontent.com/ISFH/ioBroker.wmbus/master/admin/wmbus.png",
         "keywords": ["iobroker", "wmbus", "measure", "mbus", "wireless", "meter", "oms"],
-        "readme": "https://github.com/ISFH/iobroker.wmbus/src/master/README.md",
+        "readme": "https://github.com/ISFH/ioBroker.wmbus/blob/master/README.md",
         "loglevel": "info",
         "type": "energy",
         "license": "GPL-2.0",

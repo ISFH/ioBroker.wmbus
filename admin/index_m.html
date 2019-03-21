@@ -69,8 +69,10 @@
                     break;
                 } else {
                     text += '<option value="' + list[j].comName + '" ' + ((actualValue === list[j].comName) ? 'selected' : '') + '>' + list[j].comName + '</option>';
-                    for (var k = 0; k < list[j]['symlinks'].length; k++) {
-                        text += '<option value="' + list[j]['symlinks'][k] + '" ' + ((actualValue === list[j]['symlinks'][k]) ? 'selected' : '') + '>' + list[j]['symlinks'][k] + '</option>';
+                    if (typeof list[j]['symlinks'] !== 'undefined') {
+                        for (var k = 0; k < list[j]['symlinks'].length; k++) {
+                            text += '<option value="' + list[j]['symlinks'][k] + '" ' + ((actualValue === list[j]['symlinks'][k]) ? 'selected' : '') + '>' + list[j]['symlinks'][k] + '</option>';
+                        }
                     }
                 }
             }
