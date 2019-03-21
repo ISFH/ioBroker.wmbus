@@ -30,7 +30,7 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 
 ## Changelog
 
-### 0.4.2
+### 0.4.2 / 0.4.3
 * (ChL) Small fixes
 
 ### 0.4.1
