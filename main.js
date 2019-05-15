@@ -47,7 +47,7 @@ let receiver = null;
 let receiverAvailable = {};
 let decoder = null;
 let wmBusDevices = {};
-let connected = null;
+let connected = false;
 let stateValues = {};
 let needsKey = [];
 
@@ -294,6 +294,36 @@ function getAllReceivers() {
 }
 
 function main() {
+    let objConnection = {
+        "_id":  "info.connection",
+        "type": "state",
+        "common": {
+            "role": "indicator.connected",
+            "name": "If connected to wM-Bus receiver",
+            "type": "boolean",
+            "read": true,
+            "write": false,
+            "def": false
+        },
+        "native": {}
+    };
+    adapter.setObject(objConnection._id, objConnection);
+
+    let objRaw = {
+        "_id":  "info.rawdata",
+        "type": "state",
+        "common": {
+            "role": "value",
+            "name": "Telegram raw data if parser failed",
+            "type": "string",
+            "read": true,
+            "write": false,
+            "def": false
+        },
+        "native": {}
+    };
+    adapter.setObject(objRaw._id, objRaw);
+
     getAllReceivers();
     setConnected(false);
     
