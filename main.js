@@ -83,12 +83,23 @@ function parseID(data) {
     function man2ascii(idhex) {
         return String.fromCharCode((idhex >> 10) + 64) + String.fromCharCode(((idhex >> 5) & 0x1f) + 64) + String.fromCharCode((idhex & 0x1f) + 64);
     }
+    if (data.length < 8) {
+        return "ERR-XXXXXXXX";
+    }
     return man2ascii(data.readUInt16LE(2)) + "-" + data.readUInt32LE(4).toString(16).padStart(8,'0');
 }
 
 function dataReceived(data) {
     // id == 'PIK-20104317'
     let id = parseID(data.raw_data);
+    if (data.raw_data.length < 11) {
+        if (id == "ERR-XXXXXXXX") {
+            adapter.log.info("Invalid telegram received? " + data.raw_data.toString('hex'));
+        } else {
+            adapter.log.debug("Beacon of device: " + id);
+        }
+        return;
+    }
     
     // check blacklist
     if ((typeof adapter.config.blacklist !== 'undefined') && adapter.config.blacklist.length) {
