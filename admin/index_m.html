@@ -124,7 +124,7 @@
             let aeskeys = table2values('aeskeys');
             list.forEach(function(id) {
                 if (aeskeys.findIndex(function(item) { return item.id == this; }, id) === -1) {
-                    aeskeys.push({id: id, key: "UNKOWN"});
+                    aeskeys.push({id: id, key: "UNKNOWN"});
                 }
             });
             values2table('aeskeys', aeskeys, onChng);

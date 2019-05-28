@@ -135,7 +135,7 @@ function dataReceived(data) {
     }
 
     if (typeof key !== 'undefined') {
-        if (key === "UNKOWN") {
+        if (key === "UNKNOWN") {
             key = undefined;
         } else {
             adapter.log.debug("Found AES key: " + key);
@@ -324,6 +324,14 @@ function main() {
     };
     adapter.setObject(objRaw._id, objRaw);
 
+    if (typeof adapter.config.aeskeys !== 'undefined') {
+        adapter.config.aeskeys.forEach(function (item) {
+            if (item.key === "UNKNOWN") {
+                needsKey.push(item.id);
+            }
+        });
+    }
+
     getAllReceivers();
     setConnected(false);
     
@@ -341,7 +349,7 @@ function main() {
             receiver.init(port, {baudRate: parseInt(baud)}, mode);
             receiver.port.on('error', serialError);
         } else {
-            adapter.log.error('No or unkown adapter type selected! ' + adapter.config.deviceType);
+            adapter.log.error('No or unknown adapter type selected! ' + adapter.config.deviceType);
         }
     } catch(e) {
         adapter.log.error("Error opening serial port " + port + " with baudrate " + baud);
