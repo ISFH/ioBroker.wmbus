@@ -16,6 +16,8 @@ If the adapter receives encrypted telegrams the AES key configuration tab should
 
 If the parser fails the raw telegram data will be saved to the info.rawdata state.
 
+*Attention:* The Amber receiver seems to crash after some time (or amount of received messages) in C mode?
+
 ## Links:
 * [WMBus Stack module](https://github.com/mhop/fhem-mirror/blob/master/fhem/FHEM/WMBus.pm)
 * [ioBroker.mbus](https://github.com/Apollon77/ioBroker.mbus)
@@ -29,6 +31,9 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 * CUL support?
 
 ## Changelog
+
+### 0.4.5
+* (ChL) Append device ids with key "UNKNOWN" at startup to needskey
 
 ### 0.4.2 / 0.4.3 / 0.4.4
 * (ChL) Small fixes
