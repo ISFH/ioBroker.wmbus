@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wmbus",
-        "version": "0.4.5",
+        "version": "0.4.6",
         "news": {
+            "0.4.6": {
+                "en": "Compact (Kamstrup) frame support using data record cache; some Kamstrup VIFs"
+            },
             "0.4.5": {
                 "en": "List devices with key UNKNOWN with needsKey"
             },

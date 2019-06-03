@@ -32,6 +32,9 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 
 ## Changelog
 
+### 0.4.6
+* (ChL) Support for (Kamstrup?) compact frames through data record cache (pre-defined frames have been removed!)
+
 ### 0.4.5
 * (ChL) Append device ids with key "UNKNOWN" at startup to needskey
 
