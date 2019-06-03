@@ -131,6 +131,17 @@ systemDictionary = {
         "es": "Blacklisted Devices",
         "pl": "Blacklisted Devices",
         "it": "Blacklisted Devices"
+    },
+    "Cache for compact frames support": {
+        "en": "Cache for compact frames support",
+        "de": "Cache für Kompakt-Telegramme",
+        "ru": "Cache for compact frames support",
+        "pt": "Cache for compact frames support",
+        "nl": "Cache for compact frames support",
+        "fr": "Cache for compact frames support",
+        "es": "Cache for compact frames support",
+        "pl": "Cache for compact frames support",
+        "it": "Cache for compact frames support"
     }
 };
 
