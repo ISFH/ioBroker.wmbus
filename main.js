@@ -50,6 +50,7 @@ let wmBusDevices = {};
 let connected = false;
 let stateValues = {};
 let needsKey = [];
+let failedDevices = [];
 
 function setConnected(isConnected) {
     if (connected !== isConnected) {
@@ -143,14 +144,31 @@ function dataReceived(data) {
     }
 
     decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, function(err, result) {
+        let i = failedDevices.findIndex(function(d) { return d.id == this; }, id);
+
         if (err) {
+            if (i === -1) {
+                failedDevices.push({ id: id, count: 1 });
+            } else {
+                failedDevices[i].count++;
+                if (failedDevices[i].count > 10) {
+                    adapter.config.blacklist.push({ id: id });
+                    adapter.log.warn("Device " + id + " was blacklisted until adapter restart!");
+                    return;
+                }
+            }
             adapter.log.error('Error parsing wMBus device: ' + id);
             if (err.code == 9) { // ERR_NO_AESKEY
-                needsKey.push(id);
+                if (typeof needsKey.find(function (el) { return el == this; }, id) === 'undefined') {
+                    needsKey.push(id);
+                }
             }
             adapter.setState('info.rawdata', data.raw_data.toString('hex'), true);
             adapter.log.error(err.message);
             return;
+        }
+        if ((i !== -1) && (failedDevices[i].count)) {
+            failedDevices[i].count = 0;
         }
         updateDevice(result.deviceInformation.Manufacturer + '-' + result.deviceInformation.Id, result);
     });
