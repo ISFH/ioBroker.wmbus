@@ -183,6 +183,21 @@ function updateDevice(deviceId, data) {
 
 function initializeDeviceObjects(deviceId, data, callback) {
     let neededStates = [];
+
+    let units2roles = {
+        'value.power.consumption': [ 'Wh', 'kWh', 'MWh', 'GWh', 'J', 'kJ', 'MJ', 'GJ' ],
+        'value.power': [ 'W', 'kW', 'MW', 'J/h', 'GJ/h' ],
+        'value.temperature': [ '°C', 'K', '°F' ],
+        'value.volume': [ 'm³', 'feet³' ],
+        'value.duration': [ 's', 'min', 'h', 'd', 'months', 'years' ],
+        'value.price': [ '€', '$', 'EUR', 'USD' ],
+        'value.mass': [ 'kg', 't' ],
+        'value.flow': [ 'm³/h', 'm³/min', 'm³/s', 'kg/h' ],
+        'value.pressure': [ 'bar' ],
+        'value.current': [ 'A' ],
+        'value.voltage': [ 'V' ]
+    };
+
     function createStates() {
         if (!neededStates.length) {
             callback();
@@ -190,11 +205,17 @@ function initializeDeviceObjects(deviceId, data, callback) {
         }
         const state = neededStates.shift();
         let name = (typeof state.name !== 'undefined' ? state.name : '');
+        let role;
+        if (state.id.includes('TIME_POINT')) {
+            role = "date";
+        } else {
+            role = Object.keys(units2roles).find(function(k) { return units2roles[k].includes(state.unit); }) || 'value';
+        }
         adapter.setObjectNotExists(deviceNamespace + state.id, {
             type: 'state',
             common: {
                 name: (name ? name : state.id),
-                role: 'value',
+                role: role,
                 read: true,
                 write: false,
                 unit: state.unit
