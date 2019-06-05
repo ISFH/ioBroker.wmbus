@@ -32,6 +32,10 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 
 ## Changelog
 
+### 0.4.7
+* (ChL) Blacklist devices after 10 consecutive failed parse attempts until adapter restart
+* (ChL) Assign roles derived from units (as does the mbus adapter)
+
 ### 0.4.6
 * (ChL) Support for (Kamstrup?) compact frames through data record cache (pre-defined frames have been removed!)
 

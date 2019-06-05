@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wmbus",
-        "version": "0.4.6",
+        "version": "0.4.7",
         "news": {
+            "0.4.7": {
+                "en": "Temp. blacklist of devices; assign roles"
+            },
             "0.4.6": {
                 "en": "Compact (Kamstrup) frame support using data record cache; some Kamstrup VIFs"
             },
@@ -68,7 +71,7 @@
         "readme": "https://github.com/ISFH/ioBroker.wmbus/blob/master/README.md",
         "loglevel": "info",
         "type": "energy",
-        "license": "GPL-2.0",
+        "license": "GPL-2.0-only",
         "messagebox": true
     },
     "native": {
