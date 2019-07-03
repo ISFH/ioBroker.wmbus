@@ -32,6 +32,10 @@ If the parser fails the raw telegram data will be saved to the info.rawdata stat
 
 ## Changelog
 
+### 0.5.0
+* (ChL) Basic support for Techem devices
+* (ChL) Option to force energy units (Wh and J) to kWh - BEWARE this is not really backwards compatible. Old states will keep their "old" unit, but display the adjusted value!
+
 ### 0.4.7
 * (ChL) Blacklist devices after 10 consecutive failed parse attempts until adapter restart
 * (ChL) Assign roles derived from units (as does the mbus adapter)
