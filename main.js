@@ -320,9 +320,9 @@ function updateDeviceStates(deviceNamespace, data, callback) {
 
             let val = item.value;
             if (adapter.config.forcekWh) {
-                if (state.unit == "Wh") {
+                if (item.unit == "Wh") {
                     val = val / 1000;
-                } else if (state.unit == "J") {
+                } else if (item.unit == "J") {
                     val = val / 3600000;
                 }
             }
