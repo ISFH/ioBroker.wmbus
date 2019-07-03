@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wmbus",
-        "version": "0.4.7",
+        "version": "0.5.0",
         "news": {
+            "0.5.0": {
+                "en": "Option to force energy units to kWh; Initial support for Techem devices (HCA, water, heat meter)"
+            },
             "0.4.7": {
                 "en": "Temp. blacklist of devices; assign roles"
             },
@@ -81,6 +84,7 @@
         "serialBaudRate": 9600,
         "alwaysUpdate": true,
         "drCacheEnabled": false,
+        "forcekWh": false,
         "aeskeys": [],
         "blacklist": []
     },

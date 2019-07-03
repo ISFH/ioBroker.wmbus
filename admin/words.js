@@ -142,6 +142,17 @@ systemDictionary = {
         "es": "Cache for compact frames support",
         "pl": "Cache for compact frames support",
         "it": "Cache for compact frames support"
+    },
+    "Force energy units to kWh": {
+        "en": "Force energy units to kWh",
+        "de": "Energieeinheiten auf kWh setzen",
+        "ru": "Force energy units to kWh",
+        "pt": "Force energy units to kWh",
+        "nl": "Force energy units to kWh",
+        "fr": "Force energy units to kWh",
+        "es": "Force energy units to kWh",
+        "pl": "Force energy units to kWh",
+        "it": "Force energy units to kWh"
     }
 };
 

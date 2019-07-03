@@ -211,6 +211,15 @@ function initializeDeviceObjects(deviceId, data, callback) {
         } else {
             role = Object.keys(units2roles).find(function(k) { return units2roles[k].includes(state.unit); }) || 'value';
         }
+
+        if (adapter.config.forcekWh) {
+            if (state.unit == "Wh") {
+                state.unit = "kWh";
+            } else if (state.unit == "J") {
+                state.unit = "kWh";
+            }
+        }
+
         adapter.setObjectNotExists(deviceNamespace + state.id, {
             type: 'state',
             common: {
@@ -272,7 +281,7 @@ function initializeDeviceObjects(deviceId, data, callback) {
                     currentState.name = key;
                     neededStates.push(currentState);
                 });
-                
+
                 data.dataRecord.forEach(function(item) {
                     currentState = {};
                     currentState.id = '.data.' + item.number + '-' + item.storageNo + '-' + item.type;
@@ -308,9 +317,17 @@ function updateDeviceStates(deviceNamespace, data, callback) {
         let stateId = '.data.' + item.number + '-' + item.storageNo + '-' + item.type;
         if (adapter.config.alwaysUpdate || (typeof stateValues[deviceNamespace + stateId] === 'undefined') || stateValues[deviceNamespace + stateId] !== item.value) {
             stateValues[deviceNamespace + stateId] = item.value;
-            
-            adapter.log.debug('Value ' + deviceNamespace + stateId + ': ' + item.value);
-            adapter.setState(deviceNamespace + stateId, item.value, true, err => { if (err) adapter.log.error(err) });
+
+            let val = item.value;
+            if (adapter.config.forcekWh) {
+                if (state.unit == "Wh") {
+                    val = val / 1000;
+                } else if (state.unit == "J") {
+                    val = val / 3600000;
+                }
+            }
+            adapter.log.debug('Value ' + deviceNamespace + stateId + ': ' + val);
+            adapter.setState(deviceNamespace + stateId, val, true, err => { if (err) adapter.log.error(err) });
         }
     });
     callback && callback();

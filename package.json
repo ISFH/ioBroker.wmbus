@@ -1,6 +1,6 @@
 {
   "name": "iobroker.wmbus",
-  "version": "0.4.7",
+  "version": "0.5.0",
   "description": "wMBus Adapter",
   "author": {
     "name": "Christian Landvogt",
