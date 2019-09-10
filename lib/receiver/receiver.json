@@ -24,5 +24,13 @@
             "S": "S Mode",
             "T": "T Mode"
         }
+    },
+    "cul.js": {
+        "name": "CUL",
+        "modes": {
+            "S": "S Mode",
+            "C": "C Mode",
+            "T": "T Mode"
+        }
     }
 }
