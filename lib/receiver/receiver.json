@@ -29,7 +29,6 @@
         "name": "CUL",
         "modes": {
             "S": "S Mode",
-            "C": "C Mode",
             "T": "T Mode"
         }
     }
