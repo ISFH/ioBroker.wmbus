@@ -282,6 +282,11 @@ function initializeDeviceObjects(deviceId, data, callback) {
                     neededStates.push(currentState);
                 });
 
+                currentState = {};
+                currentState.id = '.info.Updated';
+                currentState.name = 'Updated';
+                neededStates.push(currentState);
+
                 data.dataRecord.forEach(function(item) {
                     currentState = {};
                     currentState.id = '.data.' + item.number + '-' + item.storageNo + '-' + item.type;
@@ -306,12 +311,17 @@ function initializeDeviceObjects(deviceId, data, callback) {
 
 
 function updateDeviceStates(deviceNamespace, data, callback) {
+
+    adapter.log.debug('Updating device states: ' + deviceNamespace);
+
     Object.keys(data.deviceInformation).forEach(function (key) {
         if ((typeof stateValues[deviceNamespace + '.info.' + key] === 'undefined') || stateValues[deviceNamespace + '.info.' + key] !== data.deviceInformation[key]) {
             stateValues[deviceNamespace + '.info.' + key] = data.deviceInformation[key];
             adapter.setState(deviceNamespace + '.info.' + key, data.deviceInformation[key], true, err => { if (err) adapter.log.error(err) });
         }
     });
+
+    adapter.setState(deviceNamespace + '.info.Updated', Math.floor(Date.now() / 1000), true, err => { if (err) adapter.log.error(err) });
     
     data.dataRecord.forEach(function(item) {
         let stateId = '.data.' + item.number + '-' + item.storageNo + '-' + item.type;
