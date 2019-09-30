@@ -312,7 +312,7 @@ function initializeDeviceObjects(deviceId, data, callback) {
 
 function updateDeviceStates(deviceNamespace, data, callback) {
 
-    adapter.log.info('Updating device states: ' + deviceNamespace);
+    adapter.log.debug('Updating device states: ' + deviceNamespace);
 
     Object.keys(data.deviceInformation).forEach(function (key) {
         if ((typeof stateValues[deviceNamespace + '.info.' + key] === 'undefined') || stateValues[deviceNamespace + '.info.' + key] !== data.deviceInformation[key]) {
