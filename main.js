@@ -91,6 +91,7 @@ function parseID(data) {
 }
 
 function dataReceived(data) {
+    setConnected(true);
     // id == 'PIK-20104317'
     let id = parseID(data.raw_data);
     if (data.raw_data.length < 11) {
@@ -311,9 +312,6 @@ function initializeDeviceObjects(deviceId, data, callback) {
 
 
 function updateDeviceStates(deviceNamespace, data, callback) {
-
-    adapter.log.debug('Updating device states: ' + deviceNamespace);
-
     Object.keys(data.deviceInformation).forEach(function (key) {
         if ((typeof stateValues[deviceNamespace + '.info.' + key] === 'undefined') || stateValues[deviceNamespace + '.info.' + key] !== data.deviceInformation[key]) {
             stateValues[deviceNamespace + '.info.' + key] = data.deviceInformation[key];
@@ -373,7 +371,7 @@ function main() {
         },
         "native": {}
     };
-    adapter.setObject(objConnection._id, objConnection);
+    adapter.setObjectNotExists(objConnection._id, objConnection);
 
     let objRaw = {
         "_id":  "info.rawdata",
@@ -388,7 +386,7 @@ function main() {
         },
         "native": {}
     };
-    adapter.setObject(objRaw._id, objRaw);
+    adapter.setObjectNotExists(objRaw._id, objRaw);
 
     if (typeof adapter.config.aeskeys !== 'undefined') {
         adapter.config.aeskeys.forEach(function (item) {
