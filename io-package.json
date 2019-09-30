@@ -108,6 +108,9 @@
                 "write": false,
                 "def":   false
             },
+            "native": {}
+        },
+        {
             "_id":  "info.rawdata",
             "type": "state",
             "common": {
