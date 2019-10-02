@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wmbus",
-        "version": "0.5.1",
+        "version": "0.5.2",
         "news": {
+            "0.5.2": {
+                "en": "Fix for connection indicator on js-controller 2.0?"
+            },
             "0.5.1": {
                 "en": "Some small fixes; internal telegram parser now supports wired M-Bus frames (not used - for testing / developing purpose)"
             },

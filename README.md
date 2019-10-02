@@ -46,6 +46,9 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.5.2
+* (ChL) fix for connection indicator with js-controller 2.x
+
 ### 0.5.1
 * (ChL) Small fixes
 * (ChL) Internal telegram parser now supports wired M-Bus frames (not used - for testing / developing purpose)
