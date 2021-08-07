@@ -24,7 +24,7 @@
   "dependencies": {
     "@iobroker/adapter-core": "^1.0.3",
     "node-aes-cmac": "^0.1.1",
-    "serialport": "https://github.com/lvogt/node-serialport/tarball/v6.2.2-symlinks"
+    "serialport": "^9.2.0"
   },
   "devDependencies": {
     "gulp": "^3.9.1",
