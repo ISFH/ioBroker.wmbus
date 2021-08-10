@@ -435,10 +435,13 @@ function processMessage(obj) {
                 if (obj.callback) {
                     if (SerialPort) {
                         // read all found serial ports
-                        SerialPort.list(function (err, ports) {
-                            adapter.log.info('List of port: ' + JSON.stringify(ports));
-                            adapter.sendTo(obj.from, obj.command, ports, obj.callback);
-                        });
+                        SerialPort.list().then(
+                            ports => {
+                                adapter.log.info('List of port: ' + JSON.stringify(ports));
+                                adapter.sendTo(obj.from, obj.command, ports, obj.callback);
+                            },
+                            err => adapter.log.error(JSON.stringify(err))
+                        );
                     } else {
                         adapter.log.warn('Module serialport is not available');
                         adapter.sendTo(obj.from, obj.command, [{comName: 'Not available'}], obj.callback);

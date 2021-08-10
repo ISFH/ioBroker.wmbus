@@ -63,12 +63,12 @@
             var $port = $('#serialPort');
             var text = '<option value="">' + _('Select port') + '</option>';
             for (var j = 0; j < list.length; j++) {
-                if (list[j].comName === 'Not available') {
+                if (list[j].path === 'Not available') {
                     text += '<option value="" selected>' + _('Not available') + '</option>';
                     $port.prop('disabled', true);
                     break;
                 } else {
-                    text += '<option value="' + list[j].comName + '" ' + ((actualValue === list[j].comName) ? 'selected' : '') + '>' + list[j].comName + '</option>';
+                    text += '<option value="' + list[j].path + '" ' + ((actualValue === list[j].path) ? 'selected' : '') + '>' + list[j].path + '</option>';
                     if (typeof list[j]['symlinks'] !== 'undefined') {
                         for (var k = 0; k < list[j]['symlinks'].length; k++) {
                             text += '<option value="' + list[j]['symlinks'][k] + '" ' + ((actualValue === list[j]['symlinks'][k]) ? 'selected' : '') + '>' + list[j]['symlinks'][k] + '</option>';
