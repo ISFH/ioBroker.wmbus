@@ -47,7 +47,7 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
-### 0.6.0
+### 0.6.0 / 0.6.1
 * (ChL) Upgrade of serialport library to 9.2.0
 * (ChL) experimental CUL support
 

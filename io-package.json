@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wmbus",
-        "version": "0.6.0",
+        "version": "0.6.1",
         "news": {
+            "0.6.1": {
+                "en": "Bugfix"
+            },
             "0.6.0": {
                 "en": "Upgraded serialport for newer nodejs support; experimental CUL support"
             },
@@ -125,6 +128,7 @@
             "common": {
                 "role":  "value",
                 "name":  "Telegram raw data if parser failed",
+                "type":  "string",
                 "read":  true,
                 "write": false,
                 "def":   false
