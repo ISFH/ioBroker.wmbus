@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wmbus",
-        "version": "0.5.2",
+        "version": "0.6.0",
         "news": {
+            "0.6.0": {
+                "en": "Upgraded serialport for newer nodejs support; experimental CUL support"
+            },
             "0.5.2": {
                 "en": "Fix for connection indicator on js-controller 2.0?"
             },

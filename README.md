@@ -7,6 +7,7 @@ This adapter allows to receive wireless M-Bus data from supported receivers. The
 * Embit WMB modules
 * Amber Wireless AMB8465 (**Beware:** Command mode (UART_CMD_Out_Enable) is enabled!)
 * IMST iM871A
+* CUL (experimental!)
 
 The WMBUS stack has been "re-ported" from FHEM project and was extensively fixed and refactored. Testing was done with raw data picked up on the internet, OMS sample data and some test data from the jmbus library. Some edge cases are still untested.
 
@@ -42,9 +43,13 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 ## ToDo
 
 * sending telegrams for S mode receivers?
-* CUL support?
+* CUL support needs testing
 
 ## Changelog
+
+### 0.6.0
+* (ChL) Upgrade of serialport library to 9.2.0
+* (ChL) experimental CUL support
 
 ### 0.5.2
 * (ChL) fix for connection indicator with js-controller 2.x

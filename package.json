@@ -1,10 +1,10 @@
 {
   "name": "iobroker.wmbus",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "wMBus Adapter",
   "author": {
     "name": "Christian Landvogt",
-    "email": "landvogt@isfh.de"
+    "email": "chris@lvgt.de"
   },
   "contributors": [],
   "homepage": "",
@@ -19,7 +19,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ISFH/ioBroker.wmbus.git"
+    "url": "git+https://github.com/lvogt/ioBroker.wmbus.git"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^1.0.3",
