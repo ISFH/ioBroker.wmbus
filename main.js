@@ -226,6 +226,7 @@ function initializeDeviceObjects(deviceId, data, callback) {
             common: {
                 name: (name ? name : state.id),
                 role: role,
+                type: 'mixed',
                 read: true,
                 write: false,
                 unit: state.unit
