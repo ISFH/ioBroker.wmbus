@@ -25,6 +25,29 @@ systemDictionary = {
         "es":"Puerto serial",
         "pl":"Port szeregowy"
     },
+    "Custom serial port": {
+        "en": "Custom serial port",
+        "de": "Benutzerdefinierte Schnittstelle",
+        "ru": "Custom serial port",
+        "pt": "Custom serial port",
+        "nl": "Custom serial port",
+        "fr": "Custom serial port",
+        "it": "Custom serial port",
+        "es": "Custom serial port",
+        "pl": "Custom serial port"
+    },
+    "customPortSelect": {
+        "en": "Custom port (see below)",
+        "de": "Benutzerdefiniert (s. unten)",
+        "ru": "Custom port (see below)",
+        "pt": "Custom port (see below)",
+        "nl": "Custom port (see below)",
+        "fr": "Custom port (see below)",
+        "it": "Custom port (see below)",
+        "es": "Custom port (see below)",
+        "pl": "Custom port (see below)"
+    },
+
     "serialBaudRate":{
         "en":"Serial baud rate",
         "de":"Serielle Baudrate",
