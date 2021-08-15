@@ -31,5 +31,12 @@
             "S": "S Mode",
             "T": "T Mode"
         }
+    },
+    "simple.js": {
+        "name": "Simple Hexstring",
+        "modes": {
+            "A": "Frame type A",
+            "B": "Frame type B"
+        }
     }
 }
