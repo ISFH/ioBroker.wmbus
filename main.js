@@ -46,11 +46,25 @@ let ReceiverModule;
 let receiver = null;
 let receiverAvailable = {};
 let decoder = null;
-let wmBusDevices = {};
+let createdDevices = [];
 let connected = false;
 let stateValues = {};
 let needsKey = [];
 let failedDevices = [];
+
+let units2roles = {
+    'value.power.consumption': [ 'Wh', 'kWh', 'MWh', 'GWh', 'J', 'kJ', 'MJ', 'GJ' ],
+    'value.power': [ 'W', 'kW', 'MW', 'J/h', 'GJ/h' ],
+    'value.temperature': [ '°C', 'K', '°F' ],
+    'value.volume': [ 'm³', 'feet³' ],
+    'value.duration': [ 's', 'min', 'h', 'd', 'months', 'years' ],
+    'value.price': [ '€', '$', 'EUR', 'USD' ],
+    'value.mass': [ 'kg', 't' ],
+    'value.flow': [ 'm³/h', 'm³/min', 'm³/s', 'kg/h' ],
+    'value.pressure': [ 'bar' ],
+    'value.current': [ 'A' ],
+    'value.voltage': [ 'V' ]
+};
 
 function setConnected(isConnected) {
     if (connected !== isConnected) {
@@ -58,17 +72,17 @@ function setConnected(isConnected) {
         adapter.setState('info.connection', connected, true, err => {
             // analyse if the state could be set (because of permissions)
             if (err) {
-                adapter.log.error('Can not update connected state: ' + err);
+                adapter.log.error(`Can not update connected state: ${err}`);
             } else {
-                adapter.log.debug('connected set to ' + connected);
+                adapter.log.debug(`connected set to ${connected}`);
             }
         });
     }
 }
 
 function onClose(callback) {
-    try { 
-        receiver.port.close(); 
+    try {
+        receiver.port.close();
     }
     catch (e) { }
     finally {
@@ -81,86 +95,131 @@ function onClose(callback) {
 
 
 function parseID(data) {
-    function man2ascii(idhex) {
-        return String.fromCharCode((idhex >> 10) + 64) + String.fromCharCode(((idhex >> 5) & 0x1f) + 64) + String.fromCharCode((idhex & 0x1f) + 64);
-    }
     if (data.length < 8) {
         return "ERR-XXXXXXXX";
     }
-    return man2ascii(data.readUInt16LE(2)) + "-" + data.readUInt32LE(4).toString(16).padStart(8,'0');
+
+    let hexId = data.readUInt16LE(2);
+    let manufacturer = String.fromCharCode((hexId >> 10) + 64)
+        + String.fromCharCode(((hexId >> 5) & 0x1f) + 64)
+        + String.fromCharCode((hexId & 0x1f) + 64);
+
+    return `${manufacturer}-${data.readUInt32LE(4).toString(16).padStart(8, '0')}`;
 }
 
-function dataReceived(data) {
+function isDeviceBlocked(id) {
+    if ((typeof adapter.config.blacklist === 'undefined') || adapter.config.blacklist.length) {
+        return false;
+    }
+
+    let found = adapter.config.blacklist.find((item) => {
+        if (typeof item.id === 'undefined') {
+            return false;
+        } else {
+            return item.id == id;
+        }
+    });
+
+    if (typeof found !== 'undefined') { // found
+        return true;
+    }
+    return false;
+}
+
+function getAesKey(id) {
+    if ((typeof adapter.config.aeskeys === 'undefined') || adapter.config.aeskeys.length) {
+        return undefined;
+    }
+
+    let key;
+
+    // look for perfect match
+    let found = adapter.config.aeskeys.find((item) => {
+        if (typeof item.id === 'undefined') {
+            return false;
+        } else {
+            return item.id == id;
+        }
+    });
+
+    if (typeof found !== 'undefined') { // found
+        key = found.key;
+    } else { // which devices names start with our id
+        found = adapter.config.aeskeys.filter((item) => {
+            if (typeof item.id === 'undefined') {
+                return false;
+            } else {
+                return id.startsWith(item.id);
+            }
+        });
+
+        if (found.length == 1) { // only 1 match - take it
+            key = found[0].key;
+        } else if (found.length > 1) { // more than one, find the best
+            let len = found[0].id.length;
+            let pos = 0;
+            for (let i = 1; i < found.length; i++) {
+                if (found[i].id.length > len) {
+                    len = found[i].id.length;
+                    pos = i;
+                }
+            }
+            key = found[pos].key;
+        }
+    }
+
+    return key;
+}
+
+async function dataReceived(data) {
     setConnected(true);
-    // id == 'PIK-20104317'
+
     let id = parseID(data.raw_data);
+
     if (data.raw_data.length < 11) {
         if (id == "ERR-XXXXXXXX") {
-            adapter.log.info("Invalid telegram received? " + data.raw_data.toString('hex'));
+            adapter.log.info(`Invalid telegram received? ${data.raw_data.toString('hex')}`);
         } else {
-            adapter.log.debug("Beacon of device: " + id);
+            adapter.log.debug(`Beacon of device: ${id}`);
         }
         return;
     }
-    
-    // check blacklist
-    if ((typeof adapter.config.blacklist !== 'undefined') && adapter.config.blacklist.length) {
-        let found = adapter.config.blacklist.find(function(item) { if (typeof item.id === 'undefined') return false; else return item.id == this; }, id);
-        if (typeof found !== 'undefined') { // found
-            return;
-        }
+
+    // check block list
+    if (isDeviceBlocked(id)) {
+        return;
     }
-    
+
     // look for AES key
-    let key;
-    if ((typeof adapter.config.aeskeys !== 'undefined') && adapter.config.aeskeys.length) {
-        // look for perfect match
-        let found = adapter.config.aeskeys.find(function(item) { if (typeof item.id === 'undefined') return false; else return item.id == this; }, id);
-        if (typeof found !== 'undefined') { // found
-            key = found.key;
-        } else { // which devices names start with our id
-            found = adapter.config.aeskeys.filter(function(item) { if (typeof item.id === 'undefined') return false; else return this.startsWith(item.id); }, id);
-            if (found.length == 1) { // only 1 match - take it
-                key = found[0].key;
-            } else if (found.length > 1) { // more than one, find the best
-                let len = found[0].id.length;
-                let pos = 0;
-                for (let i = 1; i < found.length; i++) {
-                    if (found[i].id.length > len) {
-                        len = found[i].id.length;
-                        pos = i;
-                    }
-                }
-                key = found[pos].key;
-            } 
-        }
-    }
+    let key = getAesKey(id);
 
     if (typeof key !== 'undefined') {
         if (key === "UNKNOWN") {
             key = undefined;
         } else {
-            adapter.log.debug("Found AES key: " + key);
+            adapter.log.debug(`Found AES key: ${key}`);
         }
     }
 
     decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, function(err, result) {
-        let i = failedDevices.findIndex(function(d) { return d.id == this; }, id);
+        let i = failedDevices.findIndex((dev) => dev.id == id);
 
         if (err) {
+            adapter.log.error(`Error parsing wMBus device: ${id}`);
+
             if (i === -1) {
                 failedDevices.push({ id: id, count: 1 });
             } else {
                 failedDevices[i].count++;
                 if (failedDevices[i].count > 10) {
                     adapter.config.blacklist.push({ id: id });
-                    adapter.log.warn("Device " + id + " was blacklisted until adapter restart!");
+                    adapter.log.warn(`Device ${id} is now blocked until adapter restart!`);
                     return;
                 }
             }
-            adapter.log.error('Error parsing wMBus device: ' + id);
+
             if (err.code == 9) { // ERR_NO_AESKEY
-                if (typeof needsKey.find(function (el) { return el == this; }, id) === 'undefined') {
+                if (typeof needsKey.find((el) => el == id) === 'undefined') {
                     needsKey.push(id);
                 }
             }
@@ -168,164 +227,132 @@ function dataReceived(data) {
             adapter.log.error(err.message);
             return;
         }
+
         if ((i !== -1) && (failedDevices[i].count)) {
             failedDevices[i].count = 0;
         }
-        updateDevice(result.deviceInformation.Manufacturer + '-' + result.deviceInformation.Id, result);
+
+        let deviceId = `${result.deviceInformation.Manufacturer}-${result.deviceInformation.Id}`;
+        updateDevice(deviceId, result);
     });
 }
 
-function updateDevice(deviceId, data) {
-    adapter.log.debug('Updating device: ' + deviceId);
-    initializeDeviceObjects(deviceId, data, () => {
-        updateDeviceStates(wmBusDevices[deviceId], data);
-    });
+async function updateDevice(deviceId, result) {
+    if (createdDevices.indexOf(deviceId) == -1) {
+        await createDeviceObjects(deviceId, result);
+    }
+
+    updateDeviceStates(deviceId, result);
 }
 
-function initializeDeviceObjects(deviceId, data, callback) {
-    let neededStates = [];
-
-    let units2roles = {
-        'value.power.consumption': [ 'Wh', 'kWh', 'MWh', 'GWh', 'J', 'kJ', 'MJ', 'GJ' ],
-        'value.power': [ 'W', 'kW', 'MW', 'J/h', 'GJ/h' ],
-        'value.temperature': [ '°C', 'K', '°F' ],
-        'value.volume': [ 'm³', 'feet³' ],
-        'value.duration': [ 's', 'min', 'h', 'd', 'months', 'years' ],
-        'value.price': [ '€', '$', 'EUR', 'USD' ],
-        'value.mass': [ 'kg', 't' ],
-        'value.flow': [ 'm³/h', 'm³/min', 'm³/s', 'kg/h' ],
-        'value.pressure': [ 'bar' ],
-        'value.current': [ 'A' ],
-        'value.voltage': [ 'V' ]
-    };
-
-    function createStates() {
-        if (!neededStates.length) {
-            callback();
-            return;
-        }
-        const state = neededStates.shift();
-        let name = (typeof state.name !== 'undefined' ? state.name : '');
-        let role;
-        if (state.id.includes('TIME_POINT')) {
-            role = "date";
-        } else {
-            role = Object.keys(units2roles).find(function(k) { return units2roles[k].includes(state.unit); }) || 'value';
-        }
-
-        if (adapter.config.forcekWh) {
-            if (state.unit == "Wh") {
-                state.unit = "kWh";
-            } else if (state.unit == "J") {
-                state.unit = "kWh";
-            }
-        }
-
-        adapter.setObjectNotExists(deviceNamespace + state.id, {
-            type: 'state',
-            common: {
-                name: (name ? name : state.id),
-                role: role,
-                type: 'mixed',
-                read: true,
-                write: false,
-                unit: state.unit
-            },
-            native: {
-                id: state.id,
-                StorageNumber: state.StorageNumber,
-                Tariff: state.Tariff,
-            }
-        }, (err, obj) => {
-            if (err) {
-                adapter.log.error('Error creating State: ' + err);
-            }
-            createStates();
-        });
+async function createObject(name, obj) {
+    try {
+        await adapter.setObjectNotExistsAsync(name, obj);
+    } catch (err) {
+        adapter.log.error(`Error creating state object: ${err}`);
     }
-    
-    if (typeof wmBusDevices[deviceId] !== 'undefined') {
-        callback();
-        return;
-    }
+}
 
-    wmBusDevices[deviceId] = deviceId;
-    let deviceNamespace = wmBusDevices[deviceId];
-    adapter.setObjectNotExists(deviceNamespace, {
-        type: 'device',
-        common: {name: deviceNamespace},
+async function updateState(name, value) {
+    try {
+        await adapter.setStateAsync(name, value, true);
+    } catch (err) {
+        adapter.log.error(err);
+    }
+}
+
+async function createDeviceOrChannel(type, name) {
+    await createObject(name, {
+        type: type,
+        common: {
+            name: name,
+        },
         native: {}
-    }, (err, obj) => {
-        if (err) {
-            adapter.log.error('Error creating State: ' + err);
-        }
-        adapter.setObjectNotExists(deviceNamespace + '.info', {
-            type: 'channel',
-            common: {name: deviceNamespace + '.info'},
-            native: {}
-        }, err => {
-            if (err) {
-                adapter.log.error('Error creating State: ' + err);
-            }
-            adapter.setObjectNotExists(deviceNamespace + '.data', {
-                type: 'channel',
-                common: {name: deviceNamespace + '.data'},
-                native: {}
-            }, err => {
-                if (err) {
-                    adapter.log.error('Error creating State: ' + err);
-                }
-                let currentState;
-                let currentType;
-                Object.keys(data.deviceInformation).forEach(function (key) {
-                    currentState = {};
-                    currentState.id = '.info.' + key;
-                    currentState.name = key;
-                    neededStates.push(currentState);
-                });
-
-                currentState = {};
-                currentState.id = '.info.Updated';
-                currentState.name = 'Updated';
-                neededStates.push(currentState);
-
-                data.dataRecord.forEach(function(item) {
-                    currentState = {};
-                    currentState.id = '.data.' + item.number + '-' + item.storageNo + '-' + item.type;
-                    let name = item.description + ' (';
-                    if (item.tariff) {
-                        name += 'Tariff ' + item.tariff + '; ';
-                    }
-                    name +=  item.functionFieldText + ')';
-                    currentState.name = name;
-                    currentState.unit = item.unit;
-                    currentState.Tariff = item.tariff;
-                    currentState.StorageNumber = item.storageNo;
-                    neededStates.push(currentState);
-                });
-                
-                createStates();
-            });
-        });
-        
     });
 }
 
-
-function updateDeviceStates(deviceNamespace, data, callback) {
-    Object.keys(data.deviceInformation).forEach(function (key) {
-        if ((typeof stateValues[deviceNamespace + '.info.' + key] === 'undefined') || stateValues[deviceNamespace + '.info.' + key] !== data.deviceInformation[key]) {
-            stateValues[deviceNamespace + '.info.' + key] = data.deviceInformation[key];
-            adapter.setState(deviceNamespace + '.info.' + key, data.deviceInformation[key], true, err => { if (err) adapter.log.error(err) });
+async function createInfoState(deviceId, name) {
+    await createObject(`${deviceId}.info.${name}`, {
+        type: 'state',
+        common: {
+            name: name,
+            role: 'value',
+            type: 'mixed',
+            read: true,
+            write: false
+        },
+        native: {
+            id: `.info.${name}`
         }
     });
+}
 
-    adapter.setState(deviceNamespace + '.info.Updated', Math.floor(Date.now() / 1000), true, err => { if (err) adapter.log.error(err) });
-    
-    data.dataRecord.forEach(function(item) {
-        let stateId = '.data.' + item.number + '-' + item.storageNo + '-' + item.type;
-        if (adapter.config.alwaysUpdate || (typeof stateValues[deviceNamespace + stateId] === 'undefined') || stateValues[deviceNamespace + stateId] !== item.value) {
-            stateValues[deviceNamespace + stateId] = item.value;
+async function createDataState(deviceId, item) {
+    let id = `.data.${item.number}-${item.storageNo}-${item.type}`;
+    let unit = adapter.config.forcekWh && ((item.unit == "Wh") || (item.unit == "J")) ?  "kWh" : item.unit;
+    let role = item.type.includes('TIME_POINT') ? "date"
+        : (Object.keys(units2roles).find(k => units2roles[k].includes(item.unit)) || 'value');
+
+    let name;
+    if (item.tariff) {
+        name = `${item.description} (Tariff ${item.tariff}; ${item.functionFieldText})`;
+    } else {
+        name = `${item.description} (${item.functionFieldText})`;
+    }
+
+    await createObject(`${deviceId}${id}`, {
+        type: 'state',
+        common: {
+            name: name,
+            role: role,
+            type: 'mixed',
+            read: true,
+            write: false,
+            unit: unit
+        },
+        native: {
+            id: id,
+            StorageNumber: item.storageNo,
+            Tariff: item.tariff,
+        }
+    });
+}
+
+async function createDeviceObjects(deviceId, data) {
+    adapter.log.debug(`Creating device: ${deviceId}`);
+    await createDeviceOrChannel('device', deviceId);
+    await createDeviceOrChannel('channel', `${deviceId}.data`);
+    await createDeviceOrChannel('channel', `${deviceId}.info`);
+
+    for (const key of Object.keys(data.deviceInformation)) {
+        await createInfoState(deviceId, key);
+    }
+
+    await createInfoState(deviceId, 'Updated');
+
+    for (const item of data.dataRecord) {
+        await createDataState(deviceId, item);
+    }
+
+    createdDevices.push(deviceId);
+}
+
+async function updateDeviceStates(deviceId, data) {
+    adapter.log.debug(`Updating device: ${deviceId}`);
+    for (const key of Object.keys(data.deviceInformation)) {
+        let name = `${deviceId}.info.${key}`;
+        if ((typeof stateValues[name] === 'undefined') || (stateValues[name] !== data.deviceInformation[key])) {
+            stateValues[name] = data.deviceInformation[key];
+            await updateState(name, data.deviceInformation[key]);
+        }
+    }
+
+    await updateState(`${deviceId}.info.Updated`, Math.floor(Date.now() / 1000));
+
+    for (const item of data.dataRecord) {
+        let name = `${deviceId}.data.${item.number}-${item.storageNo}-${item.type}`;
+        if (adapter.config.alwaysUpdate || (typeof stateValues[name] === 'undefined') || (stateValues[name] !== item.value)) {
+            stateValues[name] = item.value;
 
             let val = item.value;
             if (adapter.config.forcekWh) {
@@ -335,22 +362,22 @@ function updateDeviceStates(deviceNamespace, data, callback) {
                     val = val / 3600000;
                 }
             }
-            adapter.log.debug('Value ' + deviceNamespace + stateId + ': ' + val);
-            adapter.setState(deviceNamespace + stateId, val, true, err => { if (err) adapter.log.error(err) });
+
+            adapter.log.debug(`Value ${name}: ${val}`);
+            await updateState(name, val);
         }
-    });
-    callback && callback();
+    }
 }
 
 function serialError(err) {
-    adapter.log.error('Serialport errror: ' + err.message);
+    adapter.log.error(`Serialport errror: ${err.message}`);
     setConnected(false);
     onClose();
 }
 
 function getAllReceivers() {
     receiverAvailable = {};
-    let json = JSON.parse(fs.readFileSync(adapter.adapterDir + receiverPath + 'receiver.json', 'utf8'));
+    let json = JSON.parse(fs.readFileSync(`${adapter.adapterDir}${receiverPath}receiver.json`, 'utf8'));
     Object.keys(json).forEach(function (item) {
         if (fs.existsSync(adapter.adapterDir + receiverPath + item)) {
             receiverAvailable[item] = json[item];
@@ -358,7 +385,7 @@ function getAllReceivers() {
     });
 }
 
-function main() {
+async function main() {
     let objConnection = {
         "_id":  "info.connection",
         "type": "state",
@@ -372,7 +399,7 @@ function main() {
         },
         "native": {}
     };
-    adapter.setObjectNotExists(objConnection._id, objConnection);
+    await createObject(objConnection._id, objConnection);
 
     let objRaw = {
         "_id":  "info.rawdata",
@@ -387,7 +414,7 @@ function main() {
         },
         "native": {}
     };
-    adapter.setObjectNotExists(objRaw._id, objRaw);
+    await createObject(objRaw._id, objRaw);
 
     if (typeof adapter.config.aeskeys !== 'undefined') {
         adapter.config.aeskeys.forEach(function (item) {
@@ -399,36 +426,44 @@ function main() {
 
     getAllReceivers();
     setConnected(false);
-    
+
     let port = (typeof adapter.config.serialPort !== 'undefined' ? adapter.config.serialPort : '/dev/ttyWMBUS');
     let baud = (typeof adapter.config.serialBaudRate !== 'undefined' ? adapter.config.serialBaudRate : 9600);
     let mode = (typeof adapter.config.wmbusMode !== 'undefined' ? adapter.config.wmbusMode : 'T');
-    
+
     try {
-        if (Object.keys(receiverAvailable).includes(adapter.config.deviceType + '.js')) {
-            ReceiverModule = require('.' + receiverPath + adapter.config.deviceType + '.js');
-            receiver = new ReceiverModule(adapter.log.debug); 
-            adapter.log.debug('Created device of type: ' + receiverAvailable[adapter.config.deviceType + '.js'].name);
-            decoder = new WMBusDecoder({debug: adapter.log.debug, error: adapter.log.error}, adapter.config.drCacheEnabled);
+        let receiverJs = `${adapter.config.deviceType}.js`;
+
+        if (Object.keys(receiverAvailable).includes(receiverJs)) {
+            ReceiverModule = require('.' + receiverPath + receiverJs);
+            receiver = new ReceiverModule(adapter.log.debug);
             receiver.incomingData = dataReceived;
-            receiver.init(port, {baudRate: parseInt(baud)}, mode);
+            receiver.init(port, { baudRate: parseInt(baud) }, mode);
             receiver.port.on('error', serialError);
+
+            adapter.log.debug(`Created device of type: ${receiverAvailable[receiverJs].name}`);
+
+            decoder = new WMBusDecoder({
+                debug: adapter.log.debug,
+                error: adapter.log.error
+            }, adapter.config.drCacheEnabled);
         } else {
-            adapter.log.error('No or unknown adapter type selected! ' + adapter.config.deviceType);
+            adapter.log.error(`No or unknown adapter type selected! ${adapter.config.deviceType}`);
         }
     } catch(e) {
-        adapter.log.error("Error opening serial port " + port + " with baudrate " + baud);
+        adapter.log.error(`Error opening serial port ${port} with baudrate ${baud}`);
         adapter.log.error(e);
         setConnected(false);
         return;
-        //onClose(main);
     }
 
     setConnected(true);
 }
 
 function processMessage(obj) {
-    if (!obj) return;
+    if (!obj) {
+        return;
+    }
 
     if (obj) {
         switch (obj.command) {
@@ -445,7 +480,7 @@ function processMessage(obj) {
                         );
                     } else {
                         adapter.log.warn('Module serialport is not available');
-                        adapter.sendTo(obj.from, obj.command, [{comName: 'Not available'}], obj.callback);
+                        adapter.sendTo(obj.from, obj.command, [{ comName: 'Not available'}], obj.callback);
                     }
                 }
                 break;
@@ -469,4 +504,4 @@ if (module && module.parent) {
 } else {
     // or start the instance directly
     startAdapter();
-} 
+}
