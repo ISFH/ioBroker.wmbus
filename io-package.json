@@ -97,6 +97,7 @@
         "alwaysUpdate": true,
         "drCacheEnabled": false,
         "forcekWh": false,
+        "autoBlocklist": true,
         "aeskeys": [],
         "blacklist": []
     },

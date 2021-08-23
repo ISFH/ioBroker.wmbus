@@ -171,6 +171,34 @@ function getAesKey(id) {
     return key;
 }
 
+function checkAutoBlocklist(id) {
+    let i = failedDevices.findIndex((dev) => dev.id == id);
+    if (i === -1) {
+        failedDevices.push({ id: id, count: 1 });
+    } else {
+        failedDevices[i].count++;
+        if (failedDevices[i].count > 10) {
+            adapter.config.blacklist.push({ id: id });
+            adapter.log.warn(`Device ${id} is now blocked until adapter restart!`);
+        }
+    }
+}
+
+function resetAutoBlocklist(id) {
+    let i = failedDevices.findIndex((dev) => dev.id == id);
+    if ((i !== -1) && (failedDevices[i].count)) {
+        failedDevices[i].count = 0;
+    }
+}
+
+function checkWrongKey(id, code) {
+    if (code == 9) { // ERR_NO_AESKEY
+        if (typeof needsKey.find((el) => el == id) === 'undefined') {
+            needsKey.push(id);
+        }
+    }
+}
+
 async function dataReceived(data) {
     setConnected(true);
 
@@ -202,35 +230,16 @@ async function dataReceived(data) {
     }
 
     decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, function(err, result) {
-        let i = failedDevices.findIndex((dev) => dev.id == id);
-
         if (err) {
-            adapter.log.error(`Error parsing wMBus device: ${id}`);
-
-            if (i === -1) {
-                failedDevices.push({ id: id, count: 1 });
-            } else {
-                failedDevices[i].count++;
-                if (failedDevices[i].count > 10) {
-                    adapter.config.blacklist.push({ id: id });
-                    adapter.log.warn(`Device ${id} is now blocked until adapter restart!`);
-                    return;
-                }
+            if (adapter.config.autoBlocklist) {
+              checkAutoBlocklist(id);
             }
 
-            if (err.code == 9) { // ERR_NO_AESKEY
-                if (typeof needsKey.find((el) => el == id) === 'undefined') {
-                    needsKey.push(id);
-                }
-            }
-            adapter.setState('info.rawdata', data.raw_data.toString('hex'), true);
-            adapter.log.error(err.message);
+            checkWrongKey(id, err.code);
             return;
         }
 
-        if ((i !== -1) && (failedDevices[i].count)) {
-            failedDevices[i].count = 0;
-        }
+        resetAutoBlocklist(id);
 
         let deviceId = `${result.deviceInformation.Manufacturer}-${result.deviceInformation.Id}`;
         updateDevice(deviceId, result);

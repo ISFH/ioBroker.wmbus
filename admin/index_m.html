@@ -6,7 +6,7 @@
  This work is part of the ioBroker wmbus adapter
  and is licensed under the terms of the GPL2 license.
 
- Copyright (c) 2019 ISFH 
+ Copyright (c) 2019 ISFH
  Copyright (c) 2021 Christian Landvogt
 
  -->
@@ -24,7 +24,7 @@
 <script type="text/javascript" src="words.js"></script>
  <style>
   .m .col .select-wrapper+label {
-   top: -26px;  
+   top: -26px;
   }
      .m span{
          font-size: 0.9em;
@@ -181,6 +181,8 @@
         settings.serialPort = settings.serialPort || '/dev/ttyUSB0';
         settings.serialBaudRate = settings.serialBaudRate || '9600';
         settings.alwaysUpdate = settings.alwaysUpdate || false;
+        settings.forcekWh = settings.forcekWh || false;
+        settings.autoBlocklist = settings.autoBlocklist || true;
 
         $('.value').each(function () {
             let jqThis = $(this);
@@ -223,7 +225,7 @@
             <ul class="tabs">
                 <li class="tab col s2"><a href="#tab-main" class="translate active">Options</a></li>
                 <li class="tab col s2"><a href="#tab-keys" class="translate">AES keys</a></li>
-                <li class="tab col s2"><a href="#tab-blacklist" class="translate">Blacklisted Devices</a></li>
+                <li class="tab col s2"><a href="#tab-blocklist" class="translate">Blocked Devices</a></li>
             </ul>
         </div>
         <div id="tab-main" class="col s12 page">
@@ -291,6 +293,10 @@
                     <input class="value" id="forcekWh" type="checkbox" />
                     <label for="forcekWh" class="translate">Force energy units to kWh</label>
                </div>
+               <div class="col s8 m4">
+                    <input class="value" id="autoBlocklist" type="checkbox" />
+                    <label for="autoBlocklist" class="translate">Temporarily block device after consecutive failures</label>
+               </div>
             </div>
         </div>
 
@@ -313,8 +319,8 @@
                 </div>
             </div>
         </div>
-        
-        <div id="tab-blacklist" class="col s12 page">
+
+        <div id="tab-blocklist" class="col s12 page">
             <div class="row">
                 <div class="col s8 m8" id="blacklist">
                     <a class="btn-floating waves-effect waves-light blue table-button-add"><i class="material-icons">add</i></a>
