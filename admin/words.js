@@ -144,16 +144,27 @@ systemDictionary = {
         "pl": "wMBus Mode",
         "it": "wMBus Mode"
     },
-    "Blacklisted Devices":{
-        "en": "Blacklisted Devices",
+    "Temporarily block device after consecutive failures": {
+        "en": "Temporarily block device after consecutive failures",
+        "de": "Gerät nach mehrfachen Fehlern temporär blockieren",
+        "ru": "Temporarily block device after consecutive failures",
+        "pt": "Temporarily block device after consecutive failures",
+        "nl": "Temporarily block device after consecutive failures",
+        "fr": "Temporarily block device after consecutive failures",
+        "es": "Temporarily block device after consecutive failures",
+        "pl": "Temporarily block device after consecutive failures",
+        "it": "Temporarily block device after consecutive failures"
+    },
+    "Blocked Devices":{
+        "en": "Blocked Devices",
         "de": "Blockierte Geräte",
-        "ru": "Blacklisted Devices",
-        "pt": "Blacklisted Devices",
-        "nl": "Blacklisted Devices",
-        "fr": "Blacklisted Devices",
-        "es": "Blacklisted Devices",
-        "pl": "Blacklisted Devices",
-        "it": "Blacklisted Devices"
+        "ru": "Blocked Devices",
+        "pt": "Blocked Devices",
+        "nl": "Blocked Devices",
+        "fr": "Blocked Devices",
+        "es": "Blocked Devices",
+        "pl": "Blocked Devices",
+        "it": "Blocked Devices"
     },
     "Cache for compact frames support": {
         "en": "Cache for compact frames support",
@@ -178,4 +189,3 @@ systemDictionary = {
         "it": "Force energy units to kWh"
     }
 };
-

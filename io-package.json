@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wmbus",
-        "version": "0.6.1",
+        "version": "0.6.2",
         "news": {
+            "0.6.2": {
+                "en": "Handle custom serialport path; automatic blocking of devices toggleable; 'Simple Hexstring' receiver for testing purposes"
+            },
             "0.6.1": {
                 "en": "Bugfix"
             },
@@ -49,15 +52,7 @@
                 "en": "mode 7 security; many other improvements"
             },
             "0.1.0": {
-                "en": "initial version",
-                "de": "Initiale Version",
-                "ru": "Первоначальный адаптер",
-                "pt": "Versão inicial",
-                "nl": "Eerste release",
-                "fr": "Version initiale",
-                "es": "initial version",
-                "pl": "initial version",
-                "it": "initial version"
+                "en": "initial version"
             }
         },
     "title": "Wireless M-Bus",
@@ -81,9 +76,9 @@
         "materialize": true,
         "compact": true,
         "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/ISFH/ioBroker.wmbus/master/admin/wmbus.png",
+        "extIcon": "https://raw.githubusercontent.com/lvogt/ioBroker.wmbus/master/admin/wmbus.png",
         "keywords": ["iobroker", "wmbus", "measure", "mbus", "wireless", "meter", "oms"],
-        "readme": "https://github.com/ISFH/ioBroker.wmbus/blob/master/README.md",
+        "readme": "https://github.com/lvogt/ioBroker.wmbus/blob/master/README.md",
         "loglevel": "info",
         "type": "energy",
         "license": "GPL-2.0-only",

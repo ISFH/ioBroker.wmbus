@@ -47,6 +47,12 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.6.2
+* (ChL) Improve admin page to handle custom serialport path
+* (ChL) Add option to turn automatic blocking of devices off
+* (ChL) Add "Simple Hexstring" receiver for testing purposes
+* (ChL) Internal refactoring
+
 ### 0.6.0 / 0.6.1
 * (ChL) Upgrade of serialport library to 9.2.0
 * (ChL) experimental CUL support
@@ -65,7 +71,7 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 * (ChL) Option to force energy units (Wh and J) to kWh - BEWARE this is not really backwards compatible. Old states will keep their "old" unit, but display the adjusted value!
 
 ### 0.4.7
-* (ChL) Blacklist devices after 10 consecutive failed parse attempts until adapter restart
+* (ChL) Block devices after 10 consecutive failed parse attempts until adapter restart
 * (ChL) Assign roles derived from units (as does the mbus adapter)
 
 ### 0.4.6
@@ -91,7 +97,7 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 * (ChL) VIF extensions are handled better (again)
 * (ChL) reorganised VIF info
 * (ChL) reorganised receiver handling
-* (ChL) blacklisting of devices possible
+* (ChL) blocking of devices possible
 
 ### 0.2.0 (not tagged)
 * (ChL) Dramatically improved parser: support for security mode 7, frame type B, many small fixes
@@ -107,4 +113,3 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 Copyright (c) 2019 ISFH - Institute for Solar Energy Research www.isfh.de
 
 Licensed under GPLv2. See [LICENSE](LICENSE) and [NOTICE](NOTICE)
-
