@@ -21,6 +21,7 @@
         "no-console": "off",
         "no-var": "error",
         "no-trailing-spaces": "error",
+        "no-inline-config": "off",
         "prefer-const": "error",
         "quotes": [
             "error",

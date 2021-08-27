@@ -23,6 +23,7 @@ const WMBusDecoder = require('./lib/wmbus_decoder.js');
 const ObjectHelper = require('./lib/ObjectHelper.js');
 const SerialPort = require('serialport');
 
+let adapter;
 let ReceiverModule;
 
 const receiverPath = '/lib/receiver/';
@@ -65,40 +66,40 @@ class Wmbus extends utils.Adapter {
     }
 
     async onReady() {
-        let objConnection = {
-            "_id":  "info.connection",
-            "type": "state",
-            "common": {
-                "role": "indicator.connected",
-                "name": "If connected to wM-Bus receiver",
-                "type": "boolean",
-                "read": true,
-                "write": false,
-                "def": false
+        const objConnection = {
+            '_id':  'info.connection',
+            'type': 'state',
+            'common': {
+                'role': 'indicator.connected',
+                'name': 'If connected to wM-Bus receiver',
+                'type': 'boolean',
+                'read': true,
+                'write': false,
+                'def': false
             },
-            "native": {}
+            'native': {}
         };
         await this.objectHelper.createObject(objConnection._id, objConnection);
 
-        let objRaw = {
-            "_id":  "info.rawdata",
-            "type": "state",
-            "common": {
-                "role": "value",
-                "name": "Telegram raw data if parser failed",
-                "type": "string",
-                "read": true,
-                "write": false,
-                "def": false
+        const objRaw = {
+            '_id':  'info.rawdata',
+            'type': 'state',
+            'common': {
+                'role': 'value',
+                'name': 'Telegram raw data if parser failed',
+                'type': 'string',
+                'read': true,
+                'write': false,
+                'def': false
             },
-            "native": {}
+            'native': {}
         };
         await this.objectHelper.createObject(objRaw._id, objRaw);
 
         if (typeof this.config.aeskeys !== 'undefined') {
             this.config.aeskeys.forEach(function (item) {
-                if (item.key === "UNKNOWN") {
-                    needsKey.push(item.id);
+                if (item.key === 'UNKNOWN') {
+                    this.needsKey.push(item.id);
                 }
             });
         }
@@ -106,16 +107,16 @@ class Wmbus extends utils.Adapter {
         this.receivers = this.getReceivers();
         this.setConnected(false);
 
-        let port = (typeof this.config.serialPort !== 'undefined' ? this.config.serialPort : '/dev/ttyWMBUS');
-        let baud = (typeof this.config.serialBaudRate !== 'undefined' ? this.config.serialBaudRate : 9600);
-        let mode = (typeof this.config.wmbusMode !== 'undefined' ? this.config.wmbusMode : 'T');
+        const port = (typeof this.config.serialPort !== 'undefined' ? this.config.serialPort : '/dev/ttyWMBUS');
+        const baud = (typeof this.config.serialBaudRate !== 'undefined' ? this.config.serialBaudRate : 9600);
+        const mode = (typeof this.config.wmbusMode !== 'undefined' ? this.config.wmbusMode : 'T');
 
 
         try {
-            let receiverJs = `${this.config.deviceType}.js`;
+            const receiverJs = `${this.config.deviceType}.js`;
 
             if (Object.keys(this.receivers).includes(receiverJs)) {
-                let adapter = this;
+                adapter = this;
 
                 ReceiverModule = require(`.${receiverPath}${receiverJs}`);
                 this.receiver = new ReceiverModule(this.log.debug);
@@ -143,8 +144,8 @@ class Wmbus extends utils.Adapter {
     }
 
     getReceivers() {
-        let receivers = {};
-        let json = JSON.parse(fs.readFileSync(`${this.adapterDir}${receiverPath}receiver.json`, 'utf8'));
+        const receivers = {};
+        const json = JSON.parse(fs.readFileSync(`${this.adapterDir}${receiverPath}receiver.json`, 'utf8'));
         Object.keys(json).forEach((item) => {
             if (fs.existsSync(this.adapterDir + receiverPath + item)) {
                 receivers[item] = json[item];
@@ -155,7 +156,7 @@ class Wmbus extends utils.Adapter {
     }
 
     serialError(err) {
-        adapter.log.error(`Serialport errror: ${err.message}`);
+        adapter.log.error(`Serialport error: ${err.message}`);
         adapter.setConnected(false);
         adapter.onUnload();
     }
@@ -176,10 +177,10 @@ class Wmbus extends utils.Adapter {
     async dataReceived(data) {
         adapter.setConnected(true);
 
-        let id = adapter.parseID(data.raw_data);
+        const id = adapter.parseID(data.raw_data);
 
         if (data.raw_data.length < 11) {
-            if (id == "ERR-XXXXXXXX") {
+            if (id == 'ERR-XXXXXXXX') {
                 this.log.info(`Invalid telegram received? ${data.raw_data.toString('hex')}`);
             } else {
                 this.log.debug(`Beacon of device: ${id}`);
@@ -196,7 +197,7 @@ class Wmbus extends utils.Adapter {
         let key = adapter.getAesKey(id);
 
         if (typeof key !== 'undefined') {
-            if (key === "UNKNOWN") {
+            if (key === 'UNKNOWN') {
                 key = undefined;
             } else {
                 this.log.debug(`Found AES key: ${key}`);
@@ -206,7 +207,7 @@ class Wmbus extends utils.Adapter {
         adapter.decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, (err, result) => {
             if (err) {
                 if (adapter.config.autoBlocklist) {
-                  adapter.checkAutoBlocklist(id);
+                    adapter.checkAutoBlocklist(id);
                 }
 
                 adapter.checkWrongKey(id, err.code);
@@ -215,18 +216,18 @@ class Wmbus extends utils.Adapter {
 
             adapter.resetAutoBlocklist(id);
 
-            let deviceId = `${result.deviceInformation.Manufacturer}-${result.deviceInformation.Id}`;
+            const deviceId = `${result.deviceInformation.Manufacturer}-${result.deviceInformation.Id}`;
             adapter.updateDevice(deviceId, result);
         });
     }
 
     parseID(data) {
         if (data.length < 8) {
-            return "ERR-XXXXXXXX";
+            return 'ERR-XXXXXXXX';
         }
 
-        let hexId = data.readUInt16LE(2);
-        let manufacturer = String.fromCharCode((hexId >> 10) + 64)
+        const hexId = data.readUInt16LE(2);
+        const manufacturer = String.fromCharCode((hexId >> 10) + 64)
             + String.fromCharCode(((hexId >> 5) & 0x1f) + 64)
             + String.fromCharCode((hexId & 0x1f) + 64);
 
@@ -238,7 +239,7 @@ class Wmbus extends utils.Adapter {
             return false;
         }
 
-        let found = this.config.blacklist.find((item) => {
+        const found = this.config.blacklist.find((item) => {
             if (typeof item.id === 'undefined') {
                 return false;
             } else {
@@ -253,7 +254,7 @@ class Wmbus extends utils.Adapter {
     }
 
     checkAutoBlocklist(id) {
-        let i = this.failedDevices.findIndex((dev) => dev.id == id);
+        const i = this.failedDevices.findIndex((dev) => dev.id == id);
         if (i === -1) {
             this.failedDevices.push({ id: id, count: 1 });
         } else {
@@ -266,7 +267,7 @@ class Wmbus extends utils.Adapter {
     }
 
     resetAutoBlocklist(id) {
-        let i = this.failedDevices.findIndex((dev) => dev.id == id);
+        const i = this.failedDevices.findIndex((dev) => dev.id == id);
         if ((i !== -1) && (this.failedDevices[i].count)) {
             this.failedDevices[i].count = 0;
         }
@@ -355,7 +356,7 @@ class Wmbus extends utils.Adapter {
     async updateDeviceStates(deviceId, data) {
         this.log.debug(`Updating device: ${deviceId}`);
         for (const key of Object.keys(data.deviceInformation)) {
-            let name = `${deviceId}.info.${key}`;
+            const name = `${deviceId}.info.${key}`;
             if ((typeof this.stateValues[name] === 'undefined') || (this.stateValues[name] !== data.deviceInformation[key])) {
                 this.stateValues[name] = data.deviceInformation[key];
                 await this.objectHelper.updateState(name, data.deviceInformation[key]);
@@ -365,15 +366,15 @@ class Wmbus extends utils.Adapter {
         await this.objectHelper.updateState(`${deviceId}.info.Updated`, Math.floor(Date.now() / 1000));
 
         for (const item of data.dataRecord) {
-            let name = `${deviceId}.data.${item.number}-${item.storageNo}-${item.type}`;
+            const name = `${deviceId}.data.${item.number}-${item.storageNo}-${item.type}`;
             if (this.config.alwaysUpdate || (typeof this.stateValues[name] === 'undefined') || (this.stateValues[name] !== item.value)) {
                 this.stateValues[name] = item.value;
 
                 let val = item.value;
                 if (this.config.forcekWh) {
-                    if (item.unit == "Wh") {
+                    if (item.unit == 'Wh') {
                         val = val / 1000;
-                    } else if (item.unit == "J") {
+                    } else if (item.unit == 'J') {
                         val = val / 3600000;
                     }
                 }
