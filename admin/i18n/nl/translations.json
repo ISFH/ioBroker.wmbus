@@ -1,0 +1,19 @@
+{
+    "AES key": "AES-sleutel",
+    "AES keys": "AES-sleutels",
+    "Blocked Devices": "Geblokkeerde apparaten",
+    "Cache for compact frames support": "Cache voor ondersteuning van compacte frames",
+    "Custom serial port": "Aangepaste seriële poort",
+    "Device address": "Apparaatadres",
+    "Force energy units to kWh": "Forceer energie-eenheden naar kWh",
+    "ID": "ID",
+    "Options": "instellingen",
+    "Select port": "Selecteer poort",
+    "Temporarily block device after consecutive failures": "Apparaat tijdelijk blokkeren na opeenvolgende storingen",
+    "Update unchanged states": "Ongewijzigde status bijwerken",
+    "customPortSelect": "Aangepaste poort (zie hieronder)",
+    "serialBaudRate": "Seriële baudrate",
+    "serialPort": "Seriële poort",
+    "wMBus Mode": "wMBus-modus",
+    "wMBus Receiver": "wMBus-ontvanger"
+}
