@@ -23,7 +23,6 @@ const WMBusDecoder = require('./lib/wmbus_decoder.js');
 const ObjectHelper = require('./lib/ObjectHelper.js');
 const SerialPort = require('serialport');
 
-let adapter;
 let ReceiverModule;
 
 const receiverPath = '/lib/receiver/';
@@ -116,13 +115,11 @@ class Wmbus extends utils.Adapter {
             const receiverJs = `${this.config.deviceType}.js`;
 
             if (Object.keys(this.receivers).includes(receiverJs)) {
-                adapter = this;
-
                 ReceiverModule = require(`.${receiverPath}${receiverJs}`);
                 this.receiver = new ReceiverModule(this.log.debug);
-                this.receiver.incomingData = this.dataReceived;
+                this.receiver.incomingData = this.dataReceived.bind(this);
                 this.receiver.init(port, { baudRate: parseInt(baud) }, mode);
-                this.receiver.port.on('error', this.serialError);
+                this.receiver.port.on('error', this.serialError.bind(this));
 
                 this.log.debug(`Created device of type: ${this.receivers[receiverJs].name}`);
 
@@ -156,9 +153,9 @@ class Wmbus extends utils.Adapter {
     }
 
     serialError(err) {
-        adapter.log.error(`Serialport error: ${err.message}`);
-        adapter.setConnected(false);
-        adapter.onUnload();
+        this.log.error(`Serialport error: ${err.message}`);
+        this.setConnected(false);
+        this.onUnload();
     }
 
     setConnected(isConnected) {
@@ -175,9 +172,9 @@ class Wmbus extends utils.Adapter {
     }
 
     async dataReceived(data) {
-        adapter.setConnected(true);
+        this.setConnected(true);
 
-        const id = adapter.parseID(data.raw_data);
+        const id = this.parseID(data.raw_data);
 
         if (data.raw_data.length < 11) {
             if (id == 'ERR-XXXXXXXX') {
@@ -189,12 +186,12 @@ class Wmbus extends utils.Adapter {
         }
 
         // check block list
-        if (adapter.isDeviceBlocked(id)) {
+        if (this.isDeviceBlocked(id)) {
             return;
         }
 
         // look for AES key
-        let key = adapter.getAesKey(id);
+        let key = this.getAesKey(id);
 
         if (typeof key !== 'undefined') {
             if (key === 'UNKNOWN') {
@@ -204,20 +201,20 @@ class Wmbus extends utils.Adapter {
             }
         }
 
-        adapter.decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, (err, result) => {
+        this.decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, (err, result) => {
             if (err) {
-                if (adapter.config.autoBlocklist) {
-                    adapter.checkAutoBlocklist(id);
+                if (this.config.autoBlocklist) {
+                    this.checkAutoBlocklist(id);
                 }
 
-                adapter.checkWrongKey(id, err.code);
+                this.checkWrongKey(id, err.code);
                 return;
             }
 
-            adapter.resetAutoBlocklist(id);
+            this.resetAutoBlocklist(id);
 
             const deviceId = `${result.deviceInformation.Manufacturer}-${result.deviceInformation.Id}`;
-            adapter.updateDevice(deviceId, result);
+            this.updateDevice(deviceId, result);
         });
     }
 
@@ -282,7 +279,7 @@ class Wmbus extends utils.Adapter {
     }
 
     getAesKey(id) {
-        if ((typeof this.config.aeskeys === 'undefined') || this.config.aeskeys.length) {
+        if ((typeof this.config.aeskeys === 'undefined') || !this.config.aeskeys.length) {
             return undefined;
         }
 
