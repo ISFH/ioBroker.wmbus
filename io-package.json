@@ -83,19 +83,23 @@
         "authors": [
             "Christian Landvogt <landvogt@isfh.de>"
         ],
+        "keywords": ["iobroker", "wmbus", "measure", "mbus", "wireless", "meter", "oms"],
+        "license": "GPL-2.0-only",
         "platform": "Javascript/Node.js",
-        "mode": "daemon",
+        "main": "main.js",
         "icon": "wmbus.png",
-        "materialize": true,
-        "compact": true,
         "enabled": true,
         "extIcon": "https://raw.githubusercontent.com/lvogt/ioBroker.wmbus/master/admin/wmbus.png",
-        "keywords": ["iobroker", "wmbus", "measure", "mbus", "wireless", "meter", "oms"],
         "readme": "https://github.com/lvogt/ioBroker.wmbus/blob/master/README.md",
         "loglevel": "info",
+        "mode": "daemon",
         "type": "energy",
-        "license": "GPL-2.0-only",
-        "messagebox": true
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "push",
+        "materialize": true,
+        "messagebox": true,
+        "dependencies": [{ "js-controller": ">=2.0.0" }]
     },
     "native": {
         "deviceType": "amber",
@@ -109,6 +113,7 @@
         "aeskeys": [],
         "blacklist": []
     },
+    "objects": [],
     "instanceObjects": [
         {
             "_id":  "info",
