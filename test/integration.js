@@ -34,7 +34,7 @@ async function sendTelegram(telegram) {
 
         setTimeout(() => {
             client.connect({ port: port });
-        }, 500);
+        }, 1000);
     });
 }
 
@@ -55,7 +55,7 @@ tests.integration(path.join(__dirname, '..'), {
                         resolve();
                     });
                 });
-            });
+            }).timeout(10000);
 
             it('Test listReceiver', () => {
                 return new Promise(async (resolve) => { // eslint-disable-line no-async-promise-executor
@@ -64,12 +64,14 @@ tests.integration(path.join(__dirname, '..'), {
                     await prepareAdapter(harness);
                     await harness.startAdapterAndWait();
 
+                    await new Promise(r => setTimeout(r, 2000));
+
                     harness.sendTo('wmbus.0', 'listReceiver', null, (receivers) => {
                         expect(receivers).to.have.all.keys('ebi.js', 'amber.js', 'imst.js', 'cul.js', 'simple.js');
                         resolve();
                     });
                 });
-            });
+            }).timeout(10000);
 
             it('Test needsKey', () => {
                 return new Promise(async (resolve) => { // eslint-disable-line no-async-promise-executor
@@ -85,13 +87,15 @@ tests.integration(path.join(__dirname, '..'), {
                     };
                     await sendTelegram(telegram);
 
+                    await new Promise(r => setTimeout(r, 2000));
+
                     harness.sendTo('wmbus.0', 'needsKey', null, (devices) => {
                         expect(devices).to.have.lengthOf(1);
                         expect(devices[0]).to.equal('KAM-63452869');
                         resolve();
                     });
                 });
-            });
+            }).timeout(10000);
         });
 
         describe('Test telegrams', () => {
@@ -109,7 +113,7 @@ tests.integration(path.join(__dirname, '..'), {
                     };
                     await sendTelegram(telegram);
 
-                    await new Promise(r => setTimeout(r, 500));
+                    await new Promise(r => setTimeout(r, 2000));
 
                     await harness._objects.getObject('wmbus.0.CEN-12345678.data.1-0-VIF_VOLUME', async (err, obj) => {
                         if (err) {
@@ -120,7 +124,7 @@ tests.integration(path.join(__dirname, '..'), {
                         resolve();
                     });
                 });
-            });
+            }).timeout(10000);
 
             it('Test encrypted telegram', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
@@ -136,7 +140,7 @@ tests.integration(path.join(__dirname, '..'), {
                     };
                     await sendTelegram(telegram);
 
-                    await new Promise(r => setTimeout(r, 500));
+                    await new Promise(r => setTimeout(r, 2000));
 
                     await harness._objects.getObject('wmbus.0.ELS-12345678', async (err, obj) => {
                         if (err) {
@@ -147,7 +151,7 @@ tests.integration(path.join(__dirname, '..'), {
                         resolve();
                     });
                 });
-            });
+            }).timeout(10000);
 
             it('Test encrypted telegram with radio adapter', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
@@ -163,7 +167,7 @@ tests.integration(path.join(__dirname, '..'), {
                     };
                     await sendTelegram(telegram);
 
-                    await new Promise(r => setTimeout(r, 500));
+                    await new Promise(r => setTimeout(r, 2000));
 
                     await harness._objects.getObject('wmbus.0.ELS-12345678', async (err, obj) => {
                         if (err) {
@@ -174,7 +178,7 @@ tests.integration(path.join(__dirname, '..'), {
                         resolve();
                     });
                 });
-            });
+            }).timeout(10000);
         });
     },
 });
