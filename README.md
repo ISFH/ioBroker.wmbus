@@ -47,6 +47,14 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.7.0
+* (ChL) Change main adapter code to class
+* (ChL) Include actual (machine) translations besides English and German
+* (ChL) Upgrade denpendencies
+* (ChL) Add test for wmbus decoder
+* (ChL) Add integration tests
+* (ChL) Add github workflow
+
 ### 0.6.2
 * (ChL) Improve admin page to handle custom serialport path
 * (ChL) Add option to turn automatic blocking of devices off
