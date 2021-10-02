@@ -56,6 +56,7 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ### 0.7.1
 * (ChL) Rename to ioBroker.wireless-mbus to be able to publish to npm
+* (ChL) Fix block list
 
 ### 0.7.0
 * (ChL) Change main adapter code to class

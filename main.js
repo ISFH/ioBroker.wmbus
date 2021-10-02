@@ -187,6 +187,7 @@ class WirelessMbus extends utils.Adapter {
 
         // check block list
         if (this.isDeviceBlocked(id)) {
+            this.log.debug(`Device is blocked: ${id}`);
             return;
         }
 
@@ -232,7 +233,7 @@ class WirelessMbus extends utils.Adapter {
     }
 
     isDeviceBlocked(id) {
-        if ((typeof this.config.blacklist === 'undefined') || this.config.blacklist.length) {
+        if ((typeof this.config.blacklist === 'undefined') || !this.config.blacklist.length) {
             return false;
         }
 
@@ -256,7 +257,7 @@ class WirelessMbus extends utils.Adapter {
             this.failedDevices.push({ id: id, count: 1 });
         } else {
             this.failedDevices[i].count++;
-            if (this.failedDevices[i].count > 10) {
+            if (this.failedDevices[i].count >= 10) {
                 this.config.blacklist.push({ id: id });
                 this.log.warn(`Device ${id} is now blocked until adapter restart!`);
             }
