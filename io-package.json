@@ -1,8 +1,11 @@
 {
     "common": {
-        "name": "wmbus",
-        "version": "0.7.0",
+        "name": "wireless-mbus",
+        "version": "0.7.1",
         "news": {
+            "0.7.1": {
+                "en": "Rename to ioBroker.wireless-mbus"
+            },
             "0.7.0": {
                 "en": "Cleanups and internal refactoring; Automated testing"
             },
@@ -90,10 +93,10 @@
         "license": "GPL-2.0-only",
         "platform": "Javascript/Node.js",
         "main": "main.js",
-        "icon": "wmbus.png",
+        "icon": "wireless-mbus.png",
         "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/lvogt/ioBroker.wmbus/master/admin/wmbus.png",
-        "readme": "https://github.com/lvogt/ioBroker.wmbus/blob/master/README.md",
+        "extIcon": "https://raw.githubusercontent.com/lvogt/ioBroker.wireless-mbus/master/admin/wireless-mbus.png",
+        "readme": "https://github.com/lvogt/ioBroker.wireless-mbus/blob/master/README.md",
         "loglevel": "info",
         "mode": "daemon",
         "type": "energy",

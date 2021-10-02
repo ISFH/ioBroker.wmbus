@@ -7,7 +7,7 @@ const net = require('net');
 const port = 5000;
 
 async function prepareAdapter(harness) {
-    await harness._objects.getObject('system.adapter.wmbus.0', async (err, obj) => {
+    await harness._objects.getObject('system.adapter.wireless-mbus.0', async (err, obj) => {
         // overwrite simple.js with tcp.js
         const tcpReceiver = fs.readFileSync('lib/receiver/tcp.js');
         fs.writeFileSync(`${harness.testAdapterDir}/lib/receiver/simple.js`, tcpReceiver);
@@ -50,7 +50,7 @@ tests.integration(path.join(__dirname, '..'), {
                     await prepareAdapter(harness);
                     await harness.startAdapterAndWait();
 
-                    harness.sendTo('wmbus.0', 'listUart', null, (ports) => {
+                    harness.sendTo('wireless-mbus.0', 'listUart', null, (ports) => {
                         expect(ports).to.have.lengthOf.at.least(1);
                         resolve();
                     });
@@ -66,7 +66,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    harness.sendTo('wmbus.0', 'listReceiver', null, (receivers) => {
+                    harness.sendTo('wireless-mbus.0', 'listReceiver', null, (receivers) => {
                         expect(receivers).to.have.all.keys('ebi.js', 'amber.js', 'imst.js', 'cul.js', 'simple.js');
                         resolve();
                     });
@@ -89,7 +89,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    harness.sendTo('wmbus.0', 'needsKey', null, (devices) => {
+                    harness.sendTo('wireless-mbus.0', 'needsKey', null, (devices) => {
                         expect(devices).to.have.lengthOf(1);
                         expect(devices[0]).to.equal('KAM-63452869');
                         resolve();
@@ -115,7 +115,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wmbus.0.CEN-12345678.data.1-0-VIF_VOLUME', async (err, obj) => {
+                    await harness._objects.getObject('wireless-mbus.0.CEN-12345678.data.1-0-VIF_VOLUME', async (err, obj) => {
                         if (err) {
                             reject(`Error return ${err}`);
                         }
@@ -142,7 +142,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wmbus.0.ELS-12345678', async (err, obj) => {
+                    await harness._objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
                         if (err) {
                             reject(`Error return ${err}`);
                         }
@@ -169,9 +169,9 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wmbus.0.ELS-12345678', async (err, obj) => {
+                    await harness._objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
                         if (err) {
-                            reject(`Error return ${err}`);
+                            reject(`Error return ${er^r}`);
                         }
                         expect(obj.type).to.equal('device');
                         expect(obj.common.name).to.equal('ELS-12345678');

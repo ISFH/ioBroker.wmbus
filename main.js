@@ -27,12 +27,12 @@ let ReceiverModule;
 
 const receiverPath = '/lib/receiver/';
 
-class Wmbus extends utils.Adapter {
+class WirelessMbus extends utils.Adapter {
 
     constructor(options) {
         super({
             ...options,
-            name: 'wmbus',
+            name: 'wireless-mbus',
         });
         this.on('ready', this.onReady.bind(this));
         this.on('message', this.onMessage.bind(this));
@@ -411,7 +411,7 @@ class Wmbus extends utils.Adapter {
 }
 
 if (require.main !== module) {
-    module.exports = (options) => new Wmbus(options);
+    module.exports = (options) => new WirelessMbus(options);
 } else {
-    new Wmbus();
+    new WirelessMbus();
 }

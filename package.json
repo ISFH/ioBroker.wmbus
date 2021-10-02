@@ -1,12 +1,12 @@
 {
-  "name": "iobroker.wmbus",
-  "version": "0.7.0",
+  "name": "iobroker.wireless-mbus",
+  "version": "0.7.1",
   "description": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
   "author": {
     "name": "Christian Landvogt",
     "email": "chris@lvgt.de"
   },
-  "homepage": "https://github.com/lvogt/ioBroker.wmbus",
+  "homepage": "https://github.com/lvogt/ioBroker.wireless-mbus",
   "license": "GPL-2.0-only",
   "keywords": [
     "iobroker",
@@ -19,7 +19,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:lvogt/ioBroker.wmbus.git"
+    "url": "git@github.com:lvogt/ioBroker.wireless-mbus.git"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^2.5.1",
@@ -59,7 +59,7 @@
     "release": "release-script"
   },
   "bugs": {
-    "url": "https://github.com/lvogt/ioBroker.wmbus/issues"
+    "url": "https://github.com/lvogt/ioBroker.wireless-mbus/issues"
   },
   "readmeFilename": "README.md"
 }

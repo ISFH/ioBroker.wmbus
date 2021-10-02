@@ -1,5 +1,5 @@
-![Logo](admin/wmbus.png)
-# ioBroker.wmbus
+![Logo](admin/wireless-mbus.png)
+# ioBroker.wireless-mbus
 
 This adapter allows to receive wireless M-Bus data from supported receivers. The extent of device implementation varies, but wMBus modes can be configured for all listed devices.
 
@@ -53,6 +53,9 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 * CUL support needs testing
 
 ## Changelog
+
+### 0.7.1
+* (ChL) Rename to ioBroker.wireless-mbus to be able to publish to npm
 
 ### 0.7.0
 * (ChL) Change main adapter code to class
