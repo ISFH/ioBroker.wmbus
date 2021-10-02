@@ -1,6 +1,5 @@
 ![Logo](admin/wmbus.png)
 # ioBroker.wmbus
-=================
 
 This adapter allows to receive wireless M-Bus data from supported receivers. The extent of device implementation varies, but wMBus modes can be configured for all listed devices.
 
@@ -33,6 +32,14 @@ The initial setup requires to configure the basics (hardware connection to the w
 ### Basic setup
 
 This requires to select the appropriate USB device and the correct baud rate (**usually** for IMST: 57600 baud; Amber: 9600 baud; Embit: 9600 baud). Most meters will send in "T Mode".
+
+### Other options
+
+* **Update unchanged states**: When a telegram arrives all states will be updated, even if their value did not change. (default: on)
+* **Cache for compact frames support**: To support compact telegrams (used by some (Kamstrup?) devices) the structure of all receveived telegrams is cached. This means usually only one cache entry per device. If you do not have any device which sends compact telegrams you can disable it to save a bit of performance and memory. (default: off)
+* **Force energy units to kWh**: All energy units (Wh and J) will be converted to kWh. (default: off)
+* **Temporarily block device after consecutive failures**: If 10 consecutive telegrams of the same device is not parsed successfully the device will be ignored until adapter restart (default: on)
+
 
 ### AES keys
 
@@ -119,5 +126,6 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 ## License
 
 Copyright (c) 2019 ISFH - Institute for Solar Energy Research www.isfh.de
+Copyright (c) 2021 Christian Landvogt
 
 Licensed under GPLv2. See [LICENSE](LICENSE) and [NOTICE](NOTICE)
