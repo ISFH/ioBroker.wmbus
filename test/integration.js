@@ -19,6 +19,9 @@ async function prepareAdapter(harness) {
             { id: 'ELS-12345678', key: '000102030405060708090A0B0C0D0E0F' },
             { id: 'RAD-112233', key: '000102030405060708090A0B0C0D0E0F' }
         ];
+        obj.native.blacklist = [
+            { id: 'SEN-20222542' }
+        ];
         harness._objects.setObject(obj._id, obj);
     });
 }
@@ -171,7 +174,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await harness._objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
                         if (err) {
-                            reject(`Error return ${er^r}`);
+                            reject(`Error return ${err}`);
                         }
                         expect(obj.type).to.equal('device');
                         expect(obj.common.name).to.equal('ELS-12345678');
@@ -179,6 +182,71 @@ tests.integration(path.join(__dirname, '..'), {
                     });
                 });
             }).timeout(10000);
+        });
+
+        describe('Other tests', () => {
+            it('Test blocking of device', () => {
+                return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
+                    const harness = getHarness();
+
+                    await prepareAdapter(harness);
+                    await harness.startAdapterAndWait();
+
+                    const telegram = {
+                        frameType: 'A',
+                        containsCrc: false,
+                        data: '1844AE4C4225222068077A670000000413CFE20100023B0000'
+                    };
+
+                    await sendTelegram(telegram);
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    await harness._objects.getObject('wireless-mbus.0.SEN-20222542', async (err, obj) => {
+                        if (obj === null) {
+                            resolve();
+                        } else {
+                            reject('Device should have been rejected!');
+                        }
+                    });
+                });
+            }).timeout(10000);
+
+            it('Test temporary block of device', () => {
+                return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
+                    const harness = getHarness();
+
+                    await prepareAdapter(harness);
+                    await harness.startAdapterAndWait();
+
+                    const telegramCutOff = {
+                        frameType: 'A',
+                        containsCrc: true,
+                        data: '53082448443322110337D0468E80753A63665544'
+                    };
+
+                    for (let i = 0; i < 10; i++) {
+                        await sendTelegram(telegramCutOff);
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+
+                    const telegram = {
+                        frameType: 'A',
+                        containsCrc: true,
+                        data: '53082448443322110337D0468E80753A63665544330A31900F002C25E00AB30A0000AF5D74DF73A600D972785634C027129315330375002007109058475F4BC955CF1DF878B80A1B0F98B629024AAC7279429398BFC549233C0140829B93BAA1'
+                    };
+
+                    await sendTelegram(telegram);
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    await harness._objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
+                        if (obj === null) {
+                            resolve();
+                        } else {
+                            reject('Device should have been rejected!');
+                        }
+                    });
+                });
+            }).timeout(60000);
         });
     },
 });
