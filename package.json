@@ -19,7 +19,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:lvogt/ioBroker.wireless-mbus.git"
+    "url": "git+https://github.com/lvogt/ioBroker.wireless-mbus.git"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^2.5.1",
