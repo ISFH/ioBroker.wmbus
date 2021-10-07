@@ -54,6 +54,9 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.7.3
+* (ChL) Try to improve CUL support
+
 ### 0.7.1 / 0.7.2
 * (ChL) Rename to ioBroker.wireless-mbus to be able to publish to npm
 * (ChL) Fix block list, admin page logo and repo url in package.json

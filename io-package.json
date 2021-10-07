@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.7.2",
+        "version": "0.7.3",
         "news": {
+            "0.7.3": {
+                "en": "Try to improve CUL support"
+            },
             "0.7.2": {
                 "en": "Small fixes"
             },
@@ -59,9 +62,6 @@
             },
             "0.2.0": {
                 "en": "mode 7 security; many other improvements"
-            },
-            "0.1.0": {
-                "en": "initial version"
             }
         },
         "titleLang": {
