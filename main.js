@@ -204,6 +204,7 @@ class WirelessMbus extends utils.Adapter {
 
         this.decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, (err, result) => {
             if (err) {
+                this.log.debug(`Parser failed to parse telegram from device ${id}`);
                 if (this.config.autoBlocklist) {
                     this.checkAutoBlocklist(id);
                 }
