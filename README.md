@@ -54,7 +54,7 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
-### 0.7.3
+### 0.7.3 / 0.7.4
 * (ChL) Try to improve CUL support
 
 ### 0.7.1 / 0.7.2
