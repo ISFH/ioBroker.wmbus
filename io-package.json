@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.7.4",
+        "version": "0.7.5",
         "news": {
+            "0.7.5": {
+                "en": "Fix timeout handling"
+            },
             "0.7.4": {
                 "en": "Try to improve CUL support #2"
             },
@@ -59,9 +62,6 @@
             },
             "0.4.0": {
                 "en": "Compact mode; better amber support; S/C/T mode"
-            },
-            "0.3.0": {
-                "en": "blacklist; mostly refactoring"
             }
         },
         "titleLang": {
@@ -90,7 +90,7 @@
             "zh-cn": "从无线仪表总线 (wM-Bus) 设备（如燃气表或电表）接收数据"
         },
         "authors": [
-            "Christian Landvogt <landvogt@isfh.de>"
+            "Christian Landvogt <chris@lvgt.de>"
         ],
         "keywords": ["iobroker", "wmbus", "measure", "mbus", "wireless", "meter", "oms"],
         "license": "GPL-2.0-only",
