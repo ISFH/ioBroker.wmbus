@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.7.5",
+        "version": "0.7.6",
         "news": {
+            "0.7.6": {
+                "en": "Bugfix"
+            },
             "0.7.5": {
                 "en": "Fix timeout handling"
             },
@@ -59,9 +62,6 @@
             },
             "0.4.1": {
                 "en": "IMST iM871A support"
-            },
-            "0.4.0": {
-                "en": "Compact mode; better amber support; S/C/T mode"
             }
         },
         "titleLang": {
