@@ -7,23 +7,27 @@ const net = require('net');
 const port = 5000;
 
 async function prepareAdapter(harness) {
-    await harness._objects.getObject('system.adapter.wireless-mbus.0', async (err, obj) => {
-        // overwrite simple.js with tcp.js
-        const tcpReceiver = fs.readFileSync('lib/receiver/tcp.js');
-        fs.writeFileSync(`${harness.testAdapterDir}/lib/receiver/simple.js`, tcpReceiver);
+    try {
+        await harness.objects.getObject('system.adapter.wireless-mbus.0', async (err, obj) => {
+            // overwrite simple.js with tcp.js
+            const tcpReceiver = fs.readFileSync('lib/receiver/tcp.js');
+            fs.writeFileSync(`${harness.testAdapterDir}/lib/receiver/simple.js`, tcpReceiver);
 
-        obj.native.deviceType = 'simple';
-        obj.native.serialPort = port;
-        obj.native.aeskeys = [
-            { id: 'ELS-1234567', key: 'FFF102030405060708090A0B0C0D0E0F' },
-            { id: 'ELS-12345678', key: '000102030405060708090A0B0C0D0E0F' },
-            { id: 'RAD-112233', key: '000102030405060708090A0B0C0D0E0F' }
-        ];
-        obj.native.blacklist = [
-            { id: 'SEN-20222542' }
-        ];
-        harness._objects.setObject(obj._id, obj);
-    });
+            obj.native.deviceType = 'simple';
+            obj.native.serialPort = port;
+            obj.native.aeskeys = [
+                { id: 'ELS-1234567', key: 'FFF102030405060708090A0B0C0D0E0F' },
+                { id: 'ELS-12345678', key: '000102030405060708090A0B0C0D0E0F' },
+                { id: 'RAD-112233', key: '000102030405060708090A0B0C0D0E0F' }
+            ];
+            obj.native.blacklist = [
+                { id: 'SEN-20222542' }
+            ];
+            harness.objects.setObject(obj._id, obj);
+        });
+    } catch (e) {
+        console.dir(e);
+    }
 }
 
 async function sendTelegram(telegram) {
@@ -118,7 +122,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wireless-mbus.0.CEN-12345678.data.1-0-VIF_VOLUME', async (err, obj) => {
+                    await harness.objects.getObject('wireless-mbus.0.CEN-12345678.data.1-0-VIF_VOLUME', async (err, obj) => {
                         if (err) {
                             reject(`Error return ${err}`);
                         }
@@ -145,7 +149,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
+                    await harness.objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
                         if (err) {
                             reject(`Error return ${err}`);
                         }
@@ -172,7 +176,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
+                    await harness.objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
                         if (err) {
                             reject(`Error return ${err}`);
                         }
@@ -201,7 +205,7 @@ tests.integration(path.join(__dirname, '..'), {
                     await sendTelegram(telegram);
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wireless-mbus.0.SEN-20222542', async (err, obj) => {
+                    await harness.objects.getObject('wireless-mbus.0.SEN-20222542', async (err, obj) => {
                         if (obj === null) {
                             resolve();
                         } else {
@@ -238,7 +242,7 @@ tests.integration(path.join(__dirname, '..'), {
                     await sendTelegram(telegram);
                     await new Promise(r => setTimeout(r, 2000));
 
-                    await harness._objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
+                    await harness.objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
                         if (obj === null) {
                             resolve();
                         } else {
