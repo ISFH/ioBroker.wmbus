@@ -116,7 +116,10 @@ class WirelessMbus extends utils.Adapter {
 
             if (Object.keys(this.receivers).includes(receiverJs)) {
                 ReceiverModule = require(`.${receiverPath}${receiverJs}`);
-                this.receiver = new ReceiverModule(this.log.debug);
+                this.receiver = new ReceiverModule({
+                    debug: this.log.debug,
+                    error: this.log.error
+                });
                 this.receiver.incomingData = this.dataReceived.bind(this);
                 this.receiver.init(port, { baudRate: parseInt(baud) }, mode);
                 this.receiver.port.on('error', this.serialError.bind(this));
