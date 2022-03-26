@@ -189,6 +189,33 @@ tests.integration(path.join(__dirname, '..'), {
         });
 
         describe('Other tests', () => {
+            it('Test wmbus decoder failed', () => {
+                return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
+                    const harness = getHarness();
+
+                    await prepareAdapter(harness);
+                    await harness.startAdapterAndWait();
+
+                    const telegramCutOff = {
+                        frameType: 'A',
+                        containsCrc: true,
+                        data: '53082448443322110337D0468E80753A63665544'
+                    };
+
+                    await sendTelegram(telegramCutOff);
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    await harness.states.getState('wireless-mbus.0.info.rawdata', async (err, state) => {
+                        if (err) {
+                            reject(`Error return ${err}`);
+                        }
+                        expect(state.ack).to.be.true;
+                        expect(state.val.toUpperCase()).to.equal('53082448443322110337D0468E80753A63665544');
+                        resolve();
+                    });
+                });
+            }).timeout(10000);
+
             it('Test blocking of device', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
                     const harness = getHarness();

@@ -212,6 +212,7 @@ class WirelessMbus extends utils.Adapter {
                     this.checkAutoBlocklist(id);
                 }
 
+                this.setState('info.rawdata', data.raw_data.toString('hex'), true);
                 this.checkWrongKey(id, err.code);
                 return;
             }
