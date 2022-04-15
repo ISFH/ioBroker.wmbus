@@ -54,6 +54,9 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.7.9
+* (ChL) Add debug logging to all serial devices
+
 ### 0.7.8
 * (ChL) Improve logging from receiver modules
 * (ChL) fix rawdata state
