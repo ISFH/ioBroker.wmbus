@@ -66,7 +66,7 @@ class WirelessMbus extends utils.Adapter {
 
     async onReady() {
         const objConnection = {
-            '_id':  'info.connection',
+            '_id': 'info.connection',
             'type': 'state',
             'common': {
                 'role': 'indicator.connected',
@@ -81,7 +81,7 @@ class WirelessMbus extends utils.Adapter {
         await this.objectHelper.createObject(objConnection._id, objConnection);
 
         const objRaw = {
-            '_id':  'info.rawdata',
+            '_id': 'info.rawdata',
             'type': 'state',
             'common': {
                 'role': 'value',
@@ -96,7 +96,7 @@ class WirelessMbus extends utils.Adapter {
         await this.objectHelper.createObject(objRaw._id, objRaw);
 
         if (typeof this.config.aeskeys !== 'undefined') {
-            this.config.aeskeys.forEach(function (item) {
+            this.config.aeskeys.forEach((item) => {
                 if (item.key === 'UNKNOWN') {
                     this.needsKey.push(item.id);
                 }
@@ -107,52 +107,72 @@ class WirelessMbus extends utils.Adapter {
         this.setConnected(false);
 
         const port = (typeof this.config.serialPort !== 'undefined' ? this.config.serialPort : '/dev/ttyWMBUS');
-        const baud = (typeof this.config.serialBaudRate !== 'undefined' ? this.config.serialBaudRate : 9600);
+        const baud = (typeof this.config.serialBaudRate !== 'undefined' ? parseInt(this.config.serialBaudRate) : 9600);
         const mode = (typeof this.config.wmbusMode !== 'undefined' ? this.config.wmbusMode : 'T');
 
+        const receiverClass = this.getReceiverClass(this.config.deviceType);
+        const receiverName = this.getReceiverName(this.config.deviceType);
+        const receiverJs = `.${receiverPath}${receiverClass}`;
 
         try {
-            const receiverJs = `${this.config.deviceType}.js`;
-
-            if (Object.keys(this.receivers).includes(receiverJs)) {
-                ReceiverModule = require(`.${receiverPath}${receiverJs}`);
-                this.receiver = new ReceiverModule({
+            if (fs.existsSync(receiverJs)) {
+                ReceiverModule = require(receiverJs);
+                this.receiver = new ReceiverModule(port, { baudRate: baud }, mode, this.dataReceived.bind(this), this.serialError.bind(this), {
                     debug: this.log.debug,
+                    info: this.log.info,
                     error: this.log.error
                 });
-                this.receiver.incomingData = this.dataReceived.bind(this);
-                this.receiver.init(port, { baudRate: parseInt(baud) }, mode);
-                this.receiver.port.on('error', this.serialError.bind(this));
-
-                this.log.debug(`Created device of type: ${this.receivers[receiverJs].name}`);
+                this.log.debug(`Created device of type: ${receiverName}`);
 
                 this.decoder = new WMBusDecoder({
                     debug: this.log.debug,
                     error: this.log.error
                 }, this.config.drCacheEnabled);
+
+                await this.receiver.init();
+                this.setConnected(true);
             } else {
-                this.log.error(`No or unknown adapter type selected! ${this.config.deviceType}`);
+                this.log.error(`No or unknown adapter type selected! ${receiverClass}`);
             }
-        } catch(e) {
+        } catch (e) {
             this.log.error(`Error opening serial port ${port} with baudrate ${baud}`);
             this.log.error(e);
             this.setConnected(false);
             return;
         }
-
-        this.setConnected(true);
     }
 
     getReceivers() {
         const receivers = {};
         const json = JSON.parse(fs.readFileSync(`${this.adapterDir}${receiverPath}receiver.json`, 'utf8'));
         Object.keys(json).forEach((item) => {
-            if (fs.existsSync(this.adapterDir + receiverPath + item)) {
+            if (fs.existsSync(this.adapterDir + receiverPath + json[item].js)) {
                 receivers[item] = json[item];
             }
         });
 
         return receivers;
+    }
+
+    getReceiverClass(type) {
+        if (type in this.receivers) {
+            return this.receivers[type].js;
+        }
+        return type;
+    }
+
+    getReceiverName(type) {
+        if (type in this.receivers) {
+            return this.receivers[type].name;
+        }
+        return type;
+    }
+
+    getReceiverJs(type) {
+        if (type in this.receivers) {
+            return `.${receiverPath}${this.receivers[type].js}`;
+        }
+        return `.${receiverPath}${type}`;
     }
 
     serialError(err) {
@@ -177,11 +197,11 @@ class WirelessMbus extends utils.Adapter {
     async dataReceived(data) {
         this.setConnected(true);
 
-        const id = this.parseID(data.raw_data);
+        const id = this.parseID(data.rawData);
 
-        if (data.raw_data.length < 11) {
+        if (data.rawData.length < 11) {
             if (id == 'ERR-XXXXXXXX') {
-                this.log.info(`Invalid telegram received? ${data.raw_data.toString('hex')}`);
+                this.log.info(`Invalid telegram received? ${data.rawData.toString('hex')}`);
             } else {
                 this.log.debug(`Beacon of device: ${id}`);
             }
@@ -205,14 +225,19 @@ class WirelessMbus extends utils.Adapter {
             }
         }
 
-        this.decoder.parse(data.raw_data, data.contains_crc, key, data.frame_type, (err, result) => {
+        if (!this.decoder) {
+            this.log.error('wmbus decoder has not be initialized!');
+            return;
+        }
+
+        this.decoder.parse(data.rawData, data.containsCrc, key, data.frameType, (err, result) => {
             if (err) {
                 this.log.debug(`Parser failed to parse telegram from device ${id}`);
                 if (this.config.autoBlocklist) {
                     this.checkAutoBlocklist(id);
                 }
 
-                this.setState('info.rawdata', data.raw_data.toString('hex'), true);
+                this.setState('info.rawdata', data.rawData.toString('hex'), true);
                 this.checkWrongKey(id, err.code);
                 return;
             }
@@ -402,7 +427,7 @@ class WirelessMbus extends utils.Adapter {
                         );
                     } else {
                         this.log.warn('Module serialport is not available');
-                        this.sendTo(obj.from, obj.command, [{ comName: 'Not available'}], obj.callback);
+                        this.sendTo(obj.from, obj.command, [{ comName: 'Not available' }], obj.callback);
                     }
                     break;
                 case 'listReceiver':

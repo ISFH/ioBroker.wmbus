@@ -115,8 +115,7 @@
             receivers = list;
 
             Object.keys(list).forEach((item) => {
-                let dev = item.substr(0, item.length - 3);
-                text += `<option value="${dev}"${(actualValue === dev) ? ' selected' : ''}>${list[item].name}</option>`;
+                text += `<option value="${item}"${(actualValue === item) ? ' selected' : ''}>${list[item].name}</option>`;
             });
 
             jqDeviceType.html(text).select();
@@ -143,10 +142,10 @@
     }
 
     function updateModes() {
-        let deviceJs = $('#deviceType').val() + ".js";
+        let deviceName = $('#deviceType').val();
         let text = '';
-        Object.keys(receivers[deviceJs].modes).forEach((item) => {
-            text += `<option value="${item}"${(config.wmbusMode === item) ? ' selected' : ''}>${receivers[deviceJs].modes[item]}</option>`;
+        Object.keys(receivers[deviceName].modes).forEach((item) => {
+            text += `<option value="${item}"${(config.wmbusMode === item) ? ' selected' : ''}>${receivers[deviceName].modes[item]}</option>`;
         });
         $('#wmbusMode').html(text).select();
     }

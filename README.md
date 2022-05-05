@@ -54,6 +54,9 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.8.0
+* (ChL) Complete rewrite of serial communication - now includes unit tested device classes
+
 ### 0.7.9
 * (ChL) Add debug logging to all serial devices
 

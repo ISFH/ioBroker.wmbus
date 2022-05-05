@@ -1,7 +1,6 @@
 const path = require('path');
 const { tests } = require('@iobroker/testing');
 const { expect } = require('chai');
-const fs = require('fs');
 const net = require('net');
 
 const port = 5000;
@@ -9,11 +8,7 @@ const port = 5000;
 async function prepareAdapter(harness) {
     try {
         await harness.objects.getObject('system.adapter.wireless-mbus.0', async (err, obj) => {
-            // overwrite simple.js with tcp.js
-            const tcpReceiver = fs.readFileSync('lib/receiver/tcp.js');
-            fs.writeFileSync(`${harness.testAdapterDir}/lib/receiver/simple.js`, tcpReceiver);
-
-            obj.native.deviceType = 'simple';
+            obj.native.deviceType = 'TcpReceiver.js';
             obj.native.serialPort = port;
             obj.native.aeskeys = [
                 { id: 'ELS-1234567', key: 'FFF102030405060708090A0B0C0D0E0F' },
@@ -36,7 +31,7 @@ async function sendTelegram(telegram) {
         client.on('connect', () => {
             client.write(JSON.stringify(telegram));
             client.end();
-            resolve();
+            resolve(true);
         });
 
         setTimeout(() => {
@@ -59,7 +54,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     harness.sendTo('wireless-mbus.0', 'listUart', null, (ports) => {
                         expect(ports).to.have.lengthOf.at.least(1);
-                        resolve();
+                        resolve(true);
                     });
                 });
             }).timeout(10000);
@@ -74,8 +69,8 @@ tests.integration(path.join(__dirname, '..'), {
                     await new Promise(r => setTimeout(r, 2000));
 
                     harness.sendTo('wireless-mbus.0', 'listReceiver', null, (receivers) => {
-                        expect(receivers).to.have.all.keys('ebi.js', 'amber.js', 'imst.js', 'cul.js', 'simple.js');
-                        resolve();
+                        expect(receivers).to.have.all.keys('ebi', 'amber', 'imst', 'cul', 'simple');
+                        resolve(true);
                     });
                 });
             }).timeout(10000);
@@ -99,7 +94,7 @@ tests.integration(path.join(__dirname, '..'), {
                     harness.sendTo('wireless-mbus.0', 'needsKey', null, (devices) => {
                         expect(devices).to.have.lengthOf(1);
                         expect(devices[0]).to.equal('KAM-63452869');
-                        resolve();
+                        resolve(true);
                     });
                 });
             }).timeout(10000);
@@ -128,7 +123,7 @@ tests.integration(path.join(__dirname, '..'), {
                         }
                         expect(obj.type).to.equal('state');
                         expect(obj.common.unit).to.equal('m³');
-                        resolve();
+                        resolve(true);
                     });
                 });
             }).timeout(10000);
@@ -155,7 +150,7 @@ tests.integration(path.join(__dirname, '..'), {
                         }
                         expect(obj.type).to.equal('device');
                         expect(obj.common.name).to.equal('ELS-12345678');
-                        resolve();
+                        resolve(true);
                     });
                 });
             }).timeout(10000);
@@ -182,7 +177,7 @@ tests.integration(path.join(__dirname, '..'), {
                         }
                         expect(obj.type).to.equal('device');
                         expect(obj.common.name).to.equal('ELS-12345678');
-                        resolve();
+                        resolve(true);
                     });
                 });
             }).timeout(10000);
@@ -211,7 +206,7 @@ tests.integration(path.join(__dirname, '..'), {
                         }
                         expect(state.ack).to.be.true;
                         expect(state.val.toUpperCase()).to.equal('53082448443322110337D0468E80753A63665544');
-                        resolve();
+                        resolve(true);
                     });
                 });
             }).timeout(10000);
@@ -234,7 +229,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await harness.objects.getObject('wireless-mbus.0.SEN-20222542', async (err, obj) => {
                         if (obj === null) {
-                            resolve();
+                            resolve(true);
                         } else {
                             reject('Device should have been rejected!');
                         }
@@ -271,7 +266,7 @@ tests.integration(path.join(__dirname, '..'), {
 
                     await harness.objects.getObject('wireless-mbus.0.ELS-12345678', async (err, obj) => {
                         if (obj === null) {
-                            resolve();
+                            resolve(true);
                         } else {
                             reject('Device should have been rejected!');
                         }

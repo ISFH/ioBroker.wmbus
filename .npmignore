@@ -25,3 +25,5 @@ admin/i18n
 maintenance/**
 
 lib/receiver/tcp.js
+lib/receiver/test/**
+lib/*.test.js

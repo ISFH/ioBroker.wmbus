@@ -1,14 +1,16 @@
 {
-    "ebi.js": {
+    "ebi": {
         "name": "Embit EMB-WMB169/868",
+        "js": "EbiReceiver.js",
         "modes": {
             "C": "C Mode",
             "S": "S Mode",
             "T": "T Mode"
         }
     },
-    "amber.js": {
+    "amber": {
         "name": "Amber Wireless AMB8465",
+        "js": "AmberReceiver.js",
         "modes": {
             "C": "C Mode",
             "S": "S Mode",
@@ -16,8 +18,9 @@
             "CT": "C/T Mode"
         }
     },
-    "imst.js": {
+    "imst": {
         "name": "IMST iM871A",
+        "js": "ImstReceiver.js",
         "modes": {
             "CA": "C Mode (frame type A)",
             "CB": "C Mode (frame type B)",
@@ -25,15 +28,17 @@
             "T": "T Mode"
         }
     },
-    "cul.js": {
-        "name": "CUL (untested)",
+    "cul": {
+        "name": "CUL",
+        "js": "CulReceiver.js",
         "modes": {
             "S": "S Mode",
             "T": "T Mode"
         }
     },
-    "simple.js": {
+    "simple": {
         "name": "Simple Hexstring",
+        "js": "SimpleReceiver.js",
         "modes": {
             "A": "Frame type A",
             "B": "Frame type B"

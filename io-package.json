@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.7.9",
+        "version": "0.8.0",
         "news": {
+            "0.8.0": {
+                "en": "Rewrite of serial communication"
+            },
             "0.7.9": {
                 "en": "Add debug logging for all serial devices"
             },
@@ -50,15 +53,6 @@
             },
             "0.5.0": {
                 "en": "Option to force energy units to kWh; Initial support for Techem devices (HCA, water, heat meter)"
-            },
-            "0.4.7": {
-                "en": "Temp. blacklist of devices; assign roles"
-            },
-            "0.4.6": {
-                "en": "Compact (Kamstrup) frame support using data record cache; some Kamstrup VIFs"
-            },
-            "0.4.5": {
-                "en": "List devices with key UNKNOWN with needsKey"
             }
         },
         "titleLang": {
