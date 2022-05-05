@@ -21,7 +21,7 @@ const fs = require('fs');
 
 const WMBusDecoder = require('./lib/wmbus_decoder.js');
 const ObjectHelper = require('./lib/ObjectHelper.js');
-const SerialPort = require('serialport');
+const { SerialPort } = require('serialport');
 
 let ReceiverModule;
 
@@ -117,7 +117,7 @@ class WirelessMbus extends utils.Adapter {
         try {
             if (fs.existsSync(receiverJs)) {
                 ReceiverModule = require(receiverJs);
-                this.receiver = new ReceiverModule(port, { baudRate: baud }, mode, this.dataReceived.bind(this), this.serialError.bind(this), {
+                this.receiver = new ReceiverModule({ path: port, baudRate: baud }, mode, this.dataReceived.bind(this), this.serialError.bind(this), {
                     debug: this.log.debug,
                     info: this.log.info,
                     error: this.log.error
