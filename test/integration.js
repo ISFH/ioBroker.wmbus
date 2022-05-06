@@ -35,7 +35,7 @@ async function sendTelegram(telegram) {
         });
 
         setTimeout(() => {
-            client.connect({ port: port });
+            client.connect({ port: port, host: '127.0.0.1' });
         }, 1000);
     });
 }
