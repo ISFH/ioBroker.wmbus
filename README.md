@@ -53,6 +53,10 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.8.1
+* (ChL) Fix connection state
+* (ChL) Re-add serial logging
+
 ### 0.8.0
 * (ChL) Complete rewrite of serial communication - now includes unit tested device classes
 * (ChL) Upgrade to SerialPort 10.x and dependency clean up
