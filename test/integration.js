@@ -1,9 +1,23 @@
 const path = require('path');
+const fs = require('fs');
 const { tests } = require('@iobroker/testing');
 const { expect } = require('chai');
 const net = require('net');
 
 const port = 5000;
+
+function copyMocks(harness) {
+    fs.mkdirSync(`${harness.testAdapterDir}/lib/receiver/test`);
+    const files = fs.readdirSync(`${harness.adapterDir}/lib/receiver/test`, { withFileTypes: true });
+    files.forEach((file) => {
+        if (file.isDirectory()) {
+            return;
+        }
+
+        fs.writeFileSync(`${harness.testAdapterDir}/lib/receiver/test/${file.name}`, fs.readFileSync(`${harness.adapterDir}/lib/receiver/test/${file.name}`));
+    });
+
+}
 
 async function prepareAdapter(harness) {
     try {
@@ -25,8 +39,32 @@ async function prepareAdapter(harness) {
     }
 }
 
+async function prepareAdapterWithMock(harness, mockType, forceFail) {
+    try {
+        await harness.objects.getObject('system.adapter.wireless-mbus.0', async (err, obj) => {
+            const classFile = fs.readFileSync(`${harness.testAdapterDir}/lib/receiver/SerialDevice.js`, 'utf-8');
+            const patchedClass = classFile.replace("'serialport'", `'./test/${mockType}DeviceMock'`);
+            fs.writeFileSync(`${harness.testAdapterDir}/lib/receiver/SerialDevice.js`, patchedClass);
+
+            if (forceFail) {
+                if (mockType === 'Cul') {
+                    obj.native.deviceType = 'amber';
+                } else {
+                    obj.native.deviceType = 'cul';
+                }
+            } else {
+                obj.native.deviceType = mockType.toLowerCase();
+            }
+            obj.native.serialPort = '/dev/mockPort';
+            harness.objects.setObject(obj._id, obj);
+        });
+    } catch (e) {
+        console.dir(e);
+    }
+}
+
 async function sendTelegram(telegram) {
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
         const client = new net.Socket();
         client.on('connect', () => {
             client.write(JSON.stringify(telegram));
@@ -44,6 +82,51 @@ tests.integration(path.join(__dirname, '..'), {
     allowedExitCodes: [11],
 
     defineAdditionalTests(getHarness) {
+        const testedReceiver = ['Amber', 'Cul', 'Ebi', 'Imst', 'Simple'][Math.floor(Math.random() * 5)];
+
+        describe('Test receiver with mocks', () => {
+            it(`Test ${testedReceiver}`, () => {
+                return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
+                    const harness = getHarness();
+
+                    copyMocks(harness);
+                    await prepareAdapterWithMock(harness, testedReceiver);
+                    await harness.startAdapterAndWait();
+
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    await harness.states.getState('wireless-mbus.0.info.connection', async (err, state) => {
+                        if (err) {
+                            reject(`Error return ${err}`);
+                        }
+                        expect(state.ack).to.be.true;
+                        expect(state.val).to.equal(true);
+                        resolve(true);
+                    });
+                });
+            }).timeout(10000);
+
+            it('Test receiver fails', () => {
+                return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
+                    const harness = getHarness();
+
+                    await prepareAdapterWithMock(harness, testedReceiver, true);
+                    await harness.startAdapterAndWait();
+
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    await harness.states.getState('wireless-mbus.0.info.connection', async (err, state) => {
+                        if (err) {
+                            reject(`Error return ${err}`);
+                        }
+                        expect(state.ack).to.be.true;
+                        expect(state.val).to.equal(false);
+                        resolve(true);
+                    });
+                });
+            }).timeout(10000);
+        });
+
         describe('Test sendTo()', () => {
             it('Test listUart', () => {
                 return new Promise(async (resolve) => { // eslint-disable-line no-async-promise-executor
