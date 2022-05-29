@@ -53,6 +53,9 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.8.2
+* (ChL) C-mode support for CUL
+
 ### 0.8.1
 * (ChL) Fix connection state
 * (ChL) Re-add serial logging
