@@ -33,7 +33,8 @@
         "js": "CulReceiver.js",
         "modes": {
             "S": "S Mode",
-            "T": "T Mode"
+            "T": "T Mode",
+            "C": "C/T Mode"
         }
     },
     "simple": {
