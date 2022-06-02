@@ -81,10 +81,10 @@ async function sendTelegram(telegram) {
 tests.integration(path.join(__dirname, '..'), {
     allowedExitCodes: [11],
 
-    defineAdditionalTests(getHarness) {
+    defineAdditionalTests({ suite }) {
         const testedReceiver = ['Amber', 'Cul', 'Ebi', 'Imst', 'Simple'][Math.floor(Math.random() * 5)];
 
-        describe('Test receiver with mocks', () => {
+        suite('Test receiver with mocks', (getHarness) => {
             it(`Test ${testedReceiver}`, () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
                     const harness = getHarness();
@@ -105,7 +105,9 @@ tests.integration(path.join(__dirname, '..'), {
                     });
                 });
             }).timeout(10000);
+        });
 
+        suite('Test receiver with mocks', (getHarness) => {
             it('Test receiver fails', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
                     const harness = getHarness();
@@ -127,14 +129,16 @@ tests.integration(path.join(__dirname, '..'), {
             }).timeout(10000);
         });
 
-        describe('Test sendTo()', () => {
+        suite('Test sendTo()', (getHarness) => {
+            let harness;
+            before(async () => {
+                harness = getHarness();
+                await prepareAdapter(harness);
+                await harness.startAdapterAndWait();
+            });
+
             it('Test listUart', () => {
                 return new Promise(async (resolve) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     harness.sendTo('wireless-mbus.0', 'listUart', null, (ports) => {
                         expect(ports).to.have.lengthOf.at.least(1);
                         resolve(true);
@@ -144,11 +148,6 @@ tests.integration(path.join(__dirname, '..'), {
 
             it('Test listReceiver', () => {
                 return new Promise(async (resolve) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     await new Promise(r => setTimeout(r, 2000));
 
                     harness.sendTo('wireless-mbus.0', 'listReceiver', null, (receivers) => {
@@ -160,11 +159,6 @@ tests.integration(path.join(__dirname, '..'), {
 
             it('Test needsKey', () => {
                 return new Promise(async (resolve) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     const telegram = {
                         frameType: 'A',
                         containsCrc: false,
@@ -183,14 +177,16 @@ tests.integration(path.join(__dirname, '..'), {
             }).timeout(10000);
         });
 
-        describe('Test telegrams', () => {
+        suite('Test telegrams', (getHarness) => {
+            let harness;
+            before(async () => {
+                harness = getHarness();
+                await prepareAdapter(harness);
+                await harness.startAdapterAndWait();
+            });
+
             it('Test telegram', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     const telegram = {
                         frameType: 'B',
                         containsCrc: true,
@@ -213,11 +209,6 @@ tests.integration(path.join(__dirname, '..'), {
 
             it('Test encrypted telegram', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     const telegram = {
                         frameType: 'A',
                         containsCrc: true,
@@ -237,7 +228,9 @@ tests.integration(path.join(__dirname, '..'), {
                     });
                 });
             }).timeout(10000);
+        });
 
+        suite('Test telegrams', (getHarness) => {
             it('Test encrypted telegram with radio adapter', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
                     const harness = getHarness();
@@ -266,14 +259,16 @@ tests.integration(path.join(__dirname, '..'), {
             }).timeout(10000);
         });
 
-        describe('Other tests', () => {
+        suite('Other tests', (getHarness) => {
+            let harness;
+            before(async () => {
+                harness = getHarness();
+                await prepareAdapter(harness);
+                await harness.startAdapterAndWait();
+            });
+
             it('Test wmbus decoder failed', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     const telegramCutOff = {
                         frameType: 'A',
                         containsCrc: true,
@@ -296,11 +291,6 @@ tests.integration(path.join(__dirname, '..'), {
 
             it('Test blocking of device', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     const telegram = {
                         frameType: 'A',
                         containsCrc: false,
@@ -322,11 +312,6 @@ tests.integration(path.join(__dirname, '..'), {
 
             it('Test temporary block of device', () => {
                 return new Promise(async (resolve, reject) => { // eslint-disable-line no-async-promise-executor
-                    const harness = getHarness();
-
-                    await prepareAdapter(harness);
-                    await harness.startAdapterAndWait();
-
                     const telegramCutOff = {
                         frameType: 'A',
                         containsCrc: true,
