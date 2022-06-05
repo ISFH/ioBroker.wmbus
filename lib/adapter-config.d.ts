@@ -11,6 +11,8 @@ declare global {
     namespace ioBroker {
         interface AdapterConfig extends _AdapterConfig {
             // Do not enter anything here!
+            aeskeys: { id: string, key: string }[],
+            blacklist: { id: string }[]
         }
     }
 }

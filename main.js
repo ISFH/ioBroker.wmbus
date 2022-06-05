@@ -107,6 +107,7 @@ class WirelessMbus extends utils.Adapter {
         this.setConnected(false);
 
         const port = (typeof this.config.serialPort !== 'undefined' ? this.config.serialPort : '/dev/ttyWMBUS');
+        // @ts-ignore
         const baud = (typeof this.config.serialBaudRate !== 'undefined' ? parseInt(this.config.serialBaudRate) : 9600);
         const mode = (typeof this.config.wmbusMode !== 'undefined' ? this.config.wmbusMode : 'T');
 
@@ -136,6 +137,7 @@ class WirelessMbus extends utils.Adapter {
             }
         } catch (e) {
             this.log.error(`Error opening serial port ${port} with baudrate ${baud}`);
+            // @ts-ignore
             this.log.error(e);
             this.setConnected(false);
             return;
@@ -314,10 +316,8 @@ class WirelessMbus extends utils.Adapter {
             return undefined;
         }
 
-        let key;
-
         // look for perfect match
-        let found = this.config.aeskeys.find((item) => {
+        const perfectMatch = this.config.aeskeys.find((item) => {
             if (typeof item.id === 'undefined') {
                 return false;
             } else {
@@ -325,33 +325,36 @@ class WirelessMbus extends utils.Adapter {
             }
         });
 
-        if (typeof found !== 'undefined') { // found
-            key = found.key;
-        } else { // which devices names start with our id
-            found = this.config.aeskeys.filter((item) => {
-                if (typeof item.id === 'undefined') {
-                    return false;
-                } else {
-                    return id.startsWith(item.id);
-                }
-            });
-
-            if (found.length == 1) { // only 1 match - take it
-                key = found[0].key;
-            } else if (found.length > 1) { // more than one, find the best
-                let len = found[0].id.length;
-                let pos = 0;
-                for (let i = 1; i < found.length; i++) {
-                    if (found[i].id.length > len) {
-                        len = found[i].id.length;
-                        pos = i;
-                    }
-                }
-                key = found[pos].key;
-            }
+        if (typeof perfectMatch !== 'undefined') { // found
+            return perfectMatch.key;
         }
 
-        return key;
+        // which device names start with our id
+        const candidates = this.config.aeskeys.filter((item) => {
+            if (typeof item.id === 'undefined') {
+                return false;
+            } else {
+                return id.startsWith(item.id);
+            }
+        });
+
+        if (candidates.length == 1) { // only 1 match - take it
+            return candidates[0].key;
+        }
+
+        if (candidates.length > 1) { // more than one, find the best
+            let len = candidates[0].id.length;
+            let pos = 0;
+            for (let i = 1; i < candidates.length; i++) {
+                if (candidates[i].id.length > len) {
+                    len = candidates[i].id.length;
+                    pos = i;
+                }
+            }
+            return candidates[pos].key;
+        }
+
+        return undefined;
     }
 
     async updateDevice(deviceId, result) {
