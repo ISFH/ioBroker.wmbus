@@ -1,8 +1,14 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.8.3",
+        "version": "0.8.5",
         "news": {
+            "0.8.5": {
+                "en": "Minor fix"
+            },
+            "0.8.4": {
+                "en": "Minor fix"
+            },
             "0.8.3": {
                 "en": "Minor changes - Github CI no longer runs with NodeJS12!"
             },
@@ -53,15 +59,6 @@
             },
             "0.6.0": {
                 "en": "Upgraded serialport for newer nodejs support; experimental CUL support"
-            },
-            "0.5.2": {
-                "en": "Fix for connection indicator on js-controller 2.0?"
-            },
-            "0.5.1": {
-                "en": "Some small fixes; internal telegram parser now supports wired M-Bus frames (not used - for testing / developing purpose)"
-            },
-            "0.5.0": {
-                "en": "Option to force energy units to kWh; Initial support for Techem devices (HCA, water, heat meter)"
             }
         },
         "titleLang": {
