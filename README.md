@@ -53,6 +53,10 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+### 0.8.3
+* (ChL) Update dev dependencies - Attention CI test will no longer support <= NodeJS 12
+* (ChL) Minor logging changes
+
 ### 0.8.2
 * (ChL) C-mode support for CUL
 

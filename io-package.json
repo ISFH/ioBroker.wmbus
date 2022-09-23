@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.8.2",
+        "version": "0.8.3",
         "news": {
+            "0.8.3": {
+                "en": "Minor changes - Github CI no longer runs with NodeJS12!"
+            },
             "0.8.2": {
                 "en": "C-mode support for CUL"
             },
