@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.8.5",
+        "version": "0.8.6",
         "news": {
+            "0.8.6": {
+                "en": "Minor fix"
+            },
             "0.8.5": {
                 "en": "Minor fix"
             },
