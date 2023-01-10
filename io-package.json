@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.8.6",
+        "version": "0.8.7",
         "news": {
+            "0.8.7": {
+                "en": "Slightly improve handling of LVAR DIF values"
+            },
             "0.8.6": {
                 "en": "Minor fix"
             },
@@ -53,15 +56,6 @@
             },
             "0.7.0": {
                 "en": "Cleanups and internal refactoring; Automated testing"
-            },
-            "0.6.2": {
-                "en": "Handle custom serialport path; automatic blocking of devices toggleable; 'Simple Hexstring' receiver for testing purposes"
-            },
-            "0.6.1": {
-                "en": "Bugfix"
-            },
-            "0.6.0": {
-                "en": "Upgraded serialport for newer nodejs support; experimental CUL support"
             }
         },
         "titleLang": {
