@@ -53,6 +53,9 @@ The easiest way to setup the keys is to start the adapter without any key setup 
 
 ## Changelog
 
+## 0.8.8
+* (ChL) Add datetime type I handling
+
 ### 0.8.7
 * (ChL) Slightly improve handling of LVAR DIF values
 
