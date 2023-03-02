@@ -179,9 +179,9 @@
         settings.deviceType = settings.deviceType || 'ebi';
         settings.serialPort = settings.serialPort || '/dev/ttyUSB0';
         settings.serialBaudRate = settings.serialBaudRate || '9600';
-        settings.alwaysUpdate = settings.alwaysUpdate || false;
-        settings.forcekWh = settings.forcekWh || false;
-        settings.autoBlocklist = settings.autoBlocklist || true;
+        settings.alwaysUpdate = settings.alwaysUpdate === true ? true : false;
+        settings.forcekWh = settings.forcekWh === true ? true : false;
+        settings.autoBlocklist = settings.autoBlocklist === false ? false : true;
 
         $('.value').each(function () {
             let jqThis = $(this);
