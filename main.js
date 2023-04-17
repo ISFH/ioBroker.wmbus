@@ -111,6 +111,8 @@ class WirelessMbus extends utils.Adapter {
         const baud = (typeof this.config.serialBaudRate !== 'undefined' ? parseInt(this.config.serialBaudRate) : 9600);
         const mode = (typeof this.config.wmbusMode !== 'undefined' ? this.config.wmbusMode : 'T');
 
+        const options = this.createOptions(port, baud);
+
         const receiverClass = this.getReceiverClass(this.config.deviceType);
         const receiverName = this.getReceiverName(this.config.deviceType);
         const receiverJs = `.${receiverPath}${receiverClass}`;
@@ -118,7 +120,7 @@ class WirelessMbus extends utils.Adapter {
         try {
             if (fs.existsSync(receiverJs)) {
                 ReceiverModule = require(receiverJs);
-                this.receiver = new ReceiverModule({ path: port, baudRate: baud }, mode, this.dataReceived.bind(this), this.serialError.bind(this), {
+                this.receiver = new ReceiverModule(options, mode, this.dataReceived.bind(this), this.serialError.bind(this), {
                     debug: this.log.debug,
                     info: this.log.info,
                     error: this.log.error
@@ -141,6 +143,15 @@ class WirelessMbus extends utils.Adapter {
             this.log.error(e);
             this.setConnected(false);
             return;
+        }
+    }
+
+    createOptions(port, baud) {
+        const matches = String(port).match(/tcp:\/\/([^:]+):(\d+)/);
+        if (matches) {
+            return { isTcp: true, host: matches[1], port: parseInt(matches[2]) };
+        } else {
+            return { path: port, baudRate: baud };
         }
     }
 
