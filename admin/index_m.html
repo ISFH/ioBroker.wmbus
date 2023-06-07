@@ -55,7 +55,7 @@
         sendTo(null, 'listUart', null, (list) => {
             clearTimeout(timeoutSerialPorts);
 
-            if (!list || !list.length) {
+            if (!list) {
                 timeoutSerialPorts = setTimeout(() => getSerialPorts(currentPort), 3000);
                 return;
             }
