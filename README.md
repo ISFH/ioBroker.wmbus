@@ -73,6 +73,9 @@ Afterwards, when you delete the device from the object tree, the adapter will no
 
 ## Changelog
 
+### 0.9.1
+* (ChL) Fix custom port display in admin page if SerialPort returns no ports
+
 ### 0.9.0
 * (ChL/kubax) Experimental! Enable serial over raw TCP socket for all devices - use `tcp://host:port` as custom serial port
 * serialport is upgraded to v11 - this finally breaks node v12 support!

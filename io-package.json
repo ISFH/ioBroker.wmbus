@@ -1,8 +1,11 @@
 {
     "common": {
         "name": "wireless-mbus",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "news": {
+            "0.9.1": {
+                "en": "Fix custom port display in admin page if SerialPort returns no ports"
+            },
             "0.9.0": {
                 "en": "Implement serial over TCP; upgrade to serialport 11; at least node v14 required!"
             },
