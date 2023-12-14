@@ -22,7 +22,7 @@
     "url": "git+https://github.com/lvogt/ioBroker.wireless-mbus.git"
   },
   "dependencies": {
-    "@iobroker/adapter-core": "^3.0.3",
+    "@iobroker/adapter-core": "^3.0.4",
     "node-aes-cmac": "^0.1.1",
     "serialport": "^12.0.0"
   },
@@ -30,17 +30,17 @@
     "@iobroker/testing": "^4.1.0",
     "@serialport/binding-mock": "^10.2.2",
     "@serialport/stream": "^12.0.0",
-    "@types/chai": "^4.3.6",
-    "@types/gulp": "^4.0.14",
-    "@types/mocha": "^10.0.2",
-    "@types/node": "^20.8.0",
-    "axios": "^1.5.1",
+    "@types/chai": "^4.3.11",
+    "@types/gulp": "^4.0.17",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.4",
+    "axios": "^1.6.2",
     "chai": "^4.3.10",
-    "eslint": "^8.50.0",
+    "eslint": "^8.55.0",
     "gulp": "^4.0.2",
     "mocha": "^10.2.0",
     "mockery": "^2.1.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.3.3"
   },
   "main": "main.js",
   "scripts": {
