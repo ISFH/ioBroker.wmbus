@@ -1,87 +1,96 @@
 {
     "common": {
-        "name": "wmbus",
-        "version": "0.5.2",
+        "name": "wireless-mbus",
+        "version": "0.9.2",
         "news": {
-            "0.5.2": {
-                "en": "Fix for connection indicator on js-controller 2.0?"
+            "0.9.2": {
+                "en": "Fix handling of frame type B without CRC"
             },
-            "0.5.1": {
-                "en": "Some small fixes; internal telegram parser now supports wired M-Bus frames (not used - for testing / developing purpose)"
+            "0.9.1": {
+                "en": "Fix custom port display in admin page if SerialPort returns no ports"
             },
-            "0.5.0": {
-                "en": "Option to force energy units to kWh; Initial support for Techem devices (HCA, water, heat meter)"
+            "0.9.0": {
+                "en": "Implement serial over TCP; upgrade to serialport 11; at least node v14 required!"
             },
-            "0.4.7": {
-                "en": "Temp. blacklist of devices; assign roles"
+            "0.8.10": {
+                "en": "Use compact frame cache independently from manufacturer code"
             },
-            "0.4.6": {
-                "en": "Compact (Kamstrup) frame support using data record cache; some Kamstrup VIFs"
+            "0.8.9": {
+                "en": "Fix display of non-default settings in admin page"
             },
-            "0.4.5": {
-                "en": "List devices with key UNKNOWN with needsKey"
+            "0.8.8": {
+                "en": "Add datetime type I handling"
             },
-            "0.4.4": {
-                "en": "small fixes"
+            "0.8.7": {
+                "en": "Slightly improve handling of LVAR DIF values"
             },
-            "0.4.3": {
-                "en": "small fixes"
+            "0.8.6": {
+                "en": "Minor fix"
             },
-            "0.4.2": {
-                "en": "small fixes"
+            "0.8.5": {
+                "en": "Minor fix"
             },
-            "0.4.1": {
-                "en": "IMST iM871A support"
+            "0.8.4": {
+                "en": "Minor fix"
             },
-            "0.4.0": {
-                "en": "Compact mode; better amber support; S/C/T mode"
+            "0.8.3": {
+                "en": "Minor changes - Github CI no longer runs with NodeJS12!"
             },
-            "0.3.0": {
-                "en": "blacklist; mostly refactoring"
+            "0.8.2": {
+                "en": "C-mode support for CUL"
             },
-            "0.2.0": {
-                "en": "mode 7 security; many other improvements"
+            "0.8.1": {
+                "en": "Small bugfix"
             },
-            "0.1.0": {
-                "en": "initial version",
-                "de": "Initiale Version",
-                "ru": "Первоначальный адаптер",
-                "pt": "Versão inicial",
-                "nl": "Eerste release",
-                "fr": "Version initiale",
-                "es": "initial version",
-                "pl": "initial version",
-                "it": "initial version"
+            "0.8.0": {
+                "en": "Rewrite of serial communication"
             }
         },
-    "title": "Wireless M-Bus",
+        "titleLang": {
+            "en": "Wireless M-Bus",
+            "de": "Wireless M-Bus",
+            "ru": "Wireless M-Bus",
+            "pt": "Wireless M-Bus",
+            "nl": "Wireless M-Bus",
+            "fr": "Wireless M-Bus",
+            "it": "Wireless M-Bus",
+            "es": "Wireless M-Bus",
+            "pl": "Wireless M-Bus",
+            "zh-cn": "Wireless M-Bus"
+        },
+        "title": "Wireless M-Bus",
         "desc": {
             "en": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
             "de": "Empfange Daten von Wireless Meter-Bus (wM-Bus) Geräten (zB Gas- oder Stromzähler)",
-            "ru": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-            "pt": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-            "nl": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-            "fr": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-            "es": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-            "pl": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
-            "it": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters"
+            "ru": "Получение данных от устройств Wireless Meter-Bus (wM-Bus), таких как счетчики газа или электроэнергии",
+            "pt": "Receber dados de dispositivos Wireless Meter-Bus (wM-Bus), como medidores de gás ou eletricidade",
+            "nl": "Gegevens ontvangen van Wireless Meter-Bus (wM-Bus) apparaten zoals gas- of elektriciteitsmeters",
+            "fr": "Recevoir des données d'appareils Wireless Meter-Bus (wM-Bus) comme des compteurs de gaz ou d'électricité",
+            "it": "Ricevi dati da dispositivi Wireless Meter-Bus (wM-Bus) come contatori di gas o elettricità",
+            "es": "Reciba datos de dispositivos Wireless Meter-Bus (wM-Bus) como medidores de gas o electricidad",
+            "pl": "Odbieraj dane z urządzeń Wireless Meter-Bus (wM-Bus), takich jak liczniki gazu lub energii elektrycznej",
+            "zh-cn": "从无线仪表总线 (wM-Bus) 设备（如燃气表或电表）接收数据"
         },
         "authors": [
-            "Christian Landvogt <landvogt@isfh.de>"
+            "Christian Landvogt <chris@lvgt.de>"
         ],
-        "platform": "Javascript/Node.js",
-        "mode": "daemon",
-        "icon": "wmbus.png",
-        "materialize": true,
-        "compact": true,
-        "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/ISFH/ioBroker.wmbus/master/admin/wmbus.png",
         "keywords": ["iobroker", "wmbus", "measure", "mbus", "wireless", "meter", "oms"],
-        "readme": "https://github.com/ISFH/ioBroker.wmbus/blob/master/README.md",
-        "loglevel": "info",
-        "type": "energy",
         "license": "GPL-2.0-only",
-        "messagebox": true
+        "platform": "Javascript/Node.js",
+        "main": "main.js",
+        "icon": "wireless-mbus.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/lvogt/ioBroker.wireless-mbus/master/admin/wireless-mbus.png",
+        "readme": "https://github.com/lvogt/ioBroker.wireless-mbus/blob/master/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "energy",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "push",
+        "materialize": true,
+        "messagebox": true,
+        "dependencies": [{ "js-controller": ">=2.0.0" }]
     },
     "native": {
         "deviceType": "amber",
@@ -91,9 +100,11 @@
         "alwaysUpdate": true,
         "drCacheEnabled": false,
         "forcekWh": false,
+        "autoBlocklist": true,
         "aeskeys": [],
         "blacklist": []
     },
+    "objects": [],
     "instanceObjects": [
         {
             "_id":  "info",
@@ -122,9 +133,10 @@
             "common": {
                 "role":  "value",
                 "name":  "Telegram raw data if parser failed",
+                "type":  "string",
                 "read":  true,
                 "write": false,
-                "def":   false
+                "def":   ""
             },
             "native": {}
         }

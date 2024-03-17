@@ -6,7 +6,8 @@
  This work is part of the ioBroker wmbus adapter
  and is licensed under the terms of the GPL2 license.
 
- Copyright (c) 2019 ISFH 
+ Copyright (c) 2019 ISFH
+ Copyright (c) 2021 Christian Landvogt
 
  -->
 <!-- these 4 files always have to be included -->
@@ -23,7 +24,7 @@
 <script type="text/javascript" src="words.js"></script>
  <style>
   .m .col .select-wrapper+label {
-   top: -26px;  
+   top: -26px;
   }
      .m span{
          font-size: 0.9em;
@@ -32,173 +33,188 @@
             color: black !important;
      }
  </style>
-<!-- you have to define 2 functions in the global scope: -->
+
 <script type="text/javascript">
-    let counter = 0;
-    let timeout;
+    const MAX_RETRIES = 20;
+
+    let retryCounter = 0;
+    let isCustomPort = false;
+    let receivers = {};
     let needsKey = [];
-    let onChng;
-    let devices = {};
+    let onChangeCb;
     let config;
-    
-    function getComPorts(actualValue) {
-        counter++;
-        if (counter > 20) return;
 
-        timeout = setTimeout(function () {
-            getComPorts(actualValue);
-        }, 2000);
+    function getSerialPorts(currentPort) {
+        retryCounter++;
+        if (retryCounter > MAX_RETRIES)  {
+            return;
+        }
 
-        sendTo(null, 'listUart', null, function (list) {
-            if (timeout) {
-                clearTimeout(timeout);
-                timeout = null;
-            }
-            if (!list || !list.length) {
-                setTimeout(function () {
-                    getComPorts(actualValue);
-                }, 1000);
+        let timeoutSerialPorts = setTimeout(() => getSerialPorts(currentPort), 3000);
+
+        sendTo(null, 'listUart', null, (list) => {
+            clearTimeout(timeoutSerialPorts);
+
+            if (!list) {
+                timeoutSerialPorts = setTimeout(() => getSerialPorts(currentPort), 3000);
                 return;
             }
-            var $port = $('#serialPort');
-            var text = '<option value="">' + _('Select port') + '</option>';
-            for (var j = 0; j < list.length; j++) {
-                if (list[j].comName === 'Not available') {
-                    text += '<option value="" selected>' + _('Not available') + '</option>';
-                    $port.prop('disabled', true);
-                    break;
+
+            let jqPort = $('#serialPort');
+            let jqCustomPort = $('#customPort');
+            let selectText = '';
+
+            let portFound = false;
+
+            list.forEach(port => {
+                if (port.path === 'Not available') {
+                    selectText += `<option value="" selected>${_('Not available')}</option>`;
+                    jqPort.prop('disabled', true);
+                    return;
                 } else {
-                    text += '<option value="' + list[j].comName + '" ' + ((actualValue === list[j].comName) ? 'selected' : '') + '>' + list[j].comName + '</option>';
-                    if (typeof list[j]['symlinks'] !== 'undefined') {
-                        for (var k = 0; k < list[j]['symlinks'].length; k++) {
-                            text += '<option value="' + list[j]['symlinks'][k] + '" ' + ((actualValue === list[j]['symlinks'][k]) ? 'selected' : '') + '>' + list[j]['symlinks'][k] + '</option>';
-                        }
+                    if (currentPort === port.path) {
+                        portFound = true;
+                        selectText += `<option value="${port.path}" selected>${port.path}</option>`;
+                    } else {
+                        selectText += `<option value="${port.path}">${port.path}</option>`;
                     }
                 }
+            });
+
+            isCustomPort = !portFound;
+            selectText += `<option value="custom"${isCustomPort ? ' selected' : ''}>${_('customPortSelect')}</option>`;
+            jqPort.html(selectText).select();
+
+            if (isCustomPort) {
+                jqCustomPort.val(currentPort);
+            } else {
+                jqCustomPort.val('');
             }
-            $port.html(text).select();
+
+            checkForCustomPort();
         });
     }
-    
-    function getReceiverList(actualValue) {
-        let timeoutReceiver = setTimeout(function () {
-            getReceiverList(actualValue);
-        }, 2000);
 
-        sendTo(null, 'listReceiver', null, function (list) {
-            if (timeoutReceiver) {
-                clearTimeout(timeoutReceiver);
-                timeoutReceiver = null;
-            }
+    function checkForCustomPort() {
+        $('#customPort').prop('disabled', $('#serialPort').val() !== 'custom');
+    }
+
+    function getReceiverList(actualValue) {
+        let timeoutReceiver = setTimeout(() => getReceiverList(actualValue), 2000);
+
+        sendTo(null, 'listReceiver', null, (list) => {
+            clearTimeout(timeoutReceiver);
+
             if (!list || !Object.keys(list).length) {
-                timeoutReceiver = setTimeout(function () {
-                    getReceiverList(actualValue);
-                }, 1000);
+                timeoutReceiver = setTimeout(() => getReceiverList(actualValue), 2000);
                 return;
             }
-            var $deviceType = $('#deviceType');
-            var text = '';
-            devices = list;
-            Object.keys(list).forEach(function(item) {
-                let dev = item.substr(0, item.length - 3);
-                text += '<option value="' + dev + '" ' + ((actualValue === dev) ? 'selected' : '') + '>' + list[item].name + '</option>';
+
+            let jqDeviceType = $('#deviceType');
+            let text = '';
+            receivers = list;
+
+            Object.keys(list).forEach((item) => {
+                text += `<option value="${item}"${(actualValue === item) ? ' selected' : ''}>${list[item].name}</option>`;
             });
-            $deviceType.html(text).select();
+
+            jqDeviceType.html(text).select();
 
             updateModes();
         });
     }
 
     function getNeedsKey() {
-        timeoutKeys = setTimeout(function () {
-            getNeedsKey();
-        }, 2000);
-        
-        sendTo(null, 'needsKey', null, function(list) {
-            if (timeoutKeys) {
-                clearTimeout(timeoutKeys);
-                timeoutKeys = null;
-            }
-            
+        let timeoutKeys = setTimeout(() => getNeedsKey(), 2000);
+
+        sendTo(null, 'needsKey', null, (list) => {
+            clearTimeout(timeoutKeys);
+
             needsKey = list;
             let aeskeys = table2values('aeskeys');
             list.forEach(function(id) {
-                if (aeskeys.findIndex(function(item) { return item.id == this; }, id) === -1) {
+                if (aeskeys.findIndex(item => item.id == id) === -1) {
                     aeskeys.push({id: id, key: "UNKNOWN"});
                 }
             });
-            values2table('aeskeys', aeskeys, onChng);
+            values2table('aeskeys', aeskeys, onChangeCb);
         });
-    }
-
-    // the function loadSettings has to exist ...
-    function load(settings, onChange) {
-        if (!settings) return;
-        
-        settings.deviceType = settings.deviceType || 'ebi';
-        settings.serialPort = settings.serialPort || '/dev/ttyUSB0';
-        settings.serialBaudRate = settings.serialBaudRate || '9600';
-        settings.alwaysUpdate = settings.alwaysUpdate || false;        
-
-        $('.value').each(function () {            
-            var $key = $(this);
-            var id = $key.attr('id');
-            if ($key.attr('type') === 'checkbox') {
-                // do not call onChange direct, because onChange could expect some arguments
-                $key.prop('checked', settings[id]).on('change', function() {
-                    onChange();
-                });
-            } else {
-                // do not call onChange direct, because onChange could expect some arguments
-                $key.val(settings[id]).on('change', function() {
-                    onChange();
-                }).on('keyup', function() {
-                    onChange();
-                });
-            }
-        });
-        config = settings;
-        getComPorts(settings.serialPort);
-        getReceiverList(settings.deviceType);
-        onChng = onChange;
-
-        $('#deviceType').on('change', updateModes);
-
-        onChange(false);
-        M.updateTextFields();  // function Materialize.updateTextFields(); to reinitialize all the Materialize labels on the page if you are dynamically adding inputs.
-        values2table('aeskeys', settings.aeskeys, onChange);
-        values2table('blacklist', settings.blacklist, onChange);
-        getNeedsKey();
     }
 
     function updateModes() {
-        let dev = $('#deviceType').val() + ".js";
-        var $deviceType = $('#deviceType');
-        var text = '';
-        Object.keys(devices[dev].modes).forEach(function(item) {
-            text += '<option value="' + item + '" ' + ((config.wmbusMode === item) ? 'selected' : '') + '>' + devices[dev].modes[item] + '</option>';
+        let deviceName = $('#deviceType').val();
+        let text = '';
+        Object.keys(receivers[deviceName].modes).forEach((item) => {
+            text += `<option value="${item}"${(config.wmbusMode === item) ? ' selected' : ''}>${receivers[deviceName].modes[item]}</option>`;
         });
         $('#wmbusMode').html(text).select();
     }
 
-    // ... and the function save has to exist.
-    // you have to make sure the callback is called with the settings object as first param!
     function save(callback) {
-        // example: select elements with class=value and build settings object
-        var obj = {};
-        $('.value').each(function () {
-            var $this = $(this);
-            if ($this.attr('type') === 'checkbox') {
-                obj[$this.attr('id')] = $this.prop('checked');
+        let obj = {};
+        $('.value').each(function() {
+            let jqThis = $(this);
+            if (jqThis.attr('type') === 'checkbox') {
+                obj[jqThis.attr('id')] = jqThis.prop('checked');
             } else {
-                obj[$this.attr('id')] = $this.val();
+                obj[jqThis.attr('id')] = jqThis.val();
             }
         });
+
+        if (obj.serialPort === 'custom') {
+            obj.serialPort = $('#customPort').val();
+        }
+
         obj.aeskeys = table2values('aeskeys');
         obj.blacklist = table2values('blacklist');
+
         callback(obj);
     }
 
+    function load(settings, onChange) {
+        if (!settings) {
+            return;
+        }
+
+        settings.deviceType = settings.deviceType || 'ebi';
+        settings.serialPort = settings.serialPort || '/dev/ttyUSB0';
+        settings.serialBaudRate = settings.serialBaudRate || '9600';
+        settings.alwaysUpdate = settings.alwaysUpdate === true ? true : false;
+        settings.forcekWh = settings.forcekWh === true ? true : false;
+        settings.autoBlocklist = settings.autoBlocklist === false ? false : true;
+
+        $('.value').each(function () {
+            let jqThis = $(this);
+            let id = jqThis.attr('id');
+            if (jqThis.attr('type') === 'checkbox') {
+                // do not call onChange direct, because onChange could expect some arguments
+                jqThis.prop('checked', settings[id]).on('change', () => onChange());
+            } else {
+                // do not call onChange direct, because onChange could expect some arguments
+                jqThis.val(settings[id])
+                    .on('change', () => onChange())
+                    .on('keyup', () => onChange());
+            }
+            $('#customPort').on('keyup', () => onChange());
+        });
+
+        config = settings;
+        getSerialPorts(settings.serialPort);
+        getReceiverList(settings.deviceType);
+        onChangeCb = onChange;
+
+        $('#deviceType').on('change', updateModes);
+        $('#serialPort').on('change', checkForCustomPort);
+
+        onChange(false);
+
+        M.updateTextFields();
+
+        values2table('aeskeys', settings.aeskeys, onChange);
+        values2table('blacklist', settings.blacklist, onChange);
+
+        getNeedsKey();
+    }
 </script>
 </head>
 <body>
@@ -208,13 +224,13 @@
             <ul class="tabs">
                 <li class="tab col s2"><a href="#tab-main" class="translate active">Options</a></li>
                 <li class="tab col s2"><a href="#tab-keys" class="translate">AES keys</a></li>
-                <li class="tab col s2"><a href="#tab-blacklist" class="translate">Blacklisted Devices</a></li>
+                <li class="tab col s2"><a href="#tab-blocklist" class="translate">Blocked Devices</a></li>
             </ul>
         </div>
         <div id="tab-main" class="col s12 page">
             <div class="row">
                 <div class="col s12 m4 l2">
-                    <img src="wmbus.png" class="logo">
+                    <img src="wireless-mbus.png" class="logo">
                 </div>
             </div>
             <div class="row">
@@ -229,7 +245,9 @@
             </div>
             <div class="row">
                 <div class="col s4 m4">
-                    <select class="value" id="serialPort"></select>
+                    <select class="value" id="serialPort">
+                        <option value="custom" class="translate" selected>customPortSelect</option>
+                    </select>
                     <label for="serialPort" class="translate">serialPort</label>
                 </div>
                 <div class="col s8 m4">
@@ -252,6 +270,14 @@
                 </div>
             </div>
             <div class="row">
+                <div class="col s4 m4">
+                    <input id="customPort" type="text" />
+                    <label for="customPort" class="translate">Custom serial port</label>
+                </div>
+                <div class="col s8 m4">
+                </div>
+            </div>
+            <div class="row">
                <div class="col s8 m4">
                     <input class="value" id="alwaysUpdate" type="checkbox" />
                     <label for="alwaysUpdate" class="translate">Update unchanged states</label>
@@ -265,6 +291,10 @@
                <div class="col s8 m4">
                     <input class="value" id="forcekWh" type="checkbox" />
                     <label for="forcekWh" class="translate">Force energy units to kWh</label>
+               </div>
+               <div class="col s8 m4">
+                    <input class="value" id="autoBlocklist" type="checkbox" />
+                    <label for="autoBlocklist" class="translate">Temporarily block device after consecutive failures</label>
                </div>
             </div>
         </div>
@@ -288,8 +318,8 @@
                 </div>
             </div>
         </div>
-        
-        <div id="tab-blacklist" class="col s12 page">
+
+        <div id="tab-blocklist" class="col s12 page">
             <div class="row">
                 <div class="col s8 m8" id="blacklist">
                     <a class="btn-floating waves-effect waves-light blue table-button-add"><i class="material-icons">add</i></a>

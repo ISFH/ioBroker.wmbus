@@ -1,39 +1,59 @@
 {
-  "name": "iobroker.wmbus",
-  "version": "0.5.2",
-  "description": "wMBus Adapter",
+  "name": "iobroker.wireless-mbus",
+  "version": "0.9.2",
+  "description": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
   "author": {
     "name": "Christian Landvogt",
-    "email": "landvogt@isfh.de"
+    "email": "chris@lvgt.de"
   },
-  "contributors": [],
-  "homepage": "",
+  "homepage": "https://github.com/lvogt/ioBroker.wireless-mbus",
   "license": "GPL-2.0-only",
   "keywords": [
-    "ioBroker",
-    "wireless",
-    "mbus",
+    "iobroker",
     "wmbus",
+    "measure",
+    "mbus",
+    "wireless",
     "meter",
     "oms"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ISFH/ioBroker.wmbus.git"
+    "url": "git+https://github.com/lvogt/ioBroker.wireless-mbus.git"
   },
   "dependencies": {
-    "@iobroker/adapter-core": "^1.0.3",
+    "@iobroker/adapter-core": "^3.0.4",
     "node-aes-cmac": "^0.1.1",
-    "serialport": "https://github.com/lvogt/node-serialport/tarball/v6.2.2-symlinks"
+    "serialport": "^12.0.0"
   },
   "devDependencies": {
-    "gulp": "^3.9.1",
-    "mocha": "^4.1.0",
-    "chai": "^4.1.2"
+    "@iobroker/testing": "^4.1.0",
+    "@serialport/binding-mock": "^10.2.2",
+    "@serialport/stream": "^12.0.0",
+    "@types/chai": "^4.3.11",
+    "@types/gulp": "^4.0.17",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.24",
+    "axios": "^1.6.7",
+    "chai": "^4.4.1",
+    "eslint": "^8.57.0",
+    "gulp": "^4.0.2",
+    "mocha": "^10.3.0",
+    "mockery": "^2.1.0",
+    "typescript": "^5.3.3"
   },
   "main": "main.js",
   "scripts": {
-    "test": "node node_modules/mocha/bin/mocha --exit"
+    "test:unit": "mocha --config test/mocharc.custom.json \"{!(node_modules|test)/**/*.test.js,lib/*.test.js,*.test.js,test/**/test!(PackageFiles|Startup).js}\"",
+    "test:package": "mocha test/package --exit",
+    "test:integration": "mocha test/integration --exit",
+    "test": "npm run test:unit && npm run test:package",
+    "check": "tsc --noEmit -p tsconfig.check.json",
+    "lint": "eslint",
+    "release": "release-script"
+  },
+  "bugs": {
+    "url": "https://github.com/lvogt/ioBroker.wireless-mbus/issues"
   },
   "readmeFilename": "README.md"
 }

@@ -1,0 +1,19 @@
+{
+    "AES key": "AES 密钥",
+    "AES keys": "AES 密钥",
+    "Blocked Devices": "被阻止的设备",
+    "Cache for compact frames support": "支持紧凑帧的缓存",
+    "Custom serial port": "自定义串口",
+    "Device address": "设备地址",
+    "Force energy units to kWh": "强制能量单位为 kWh",
+    "ID": "ID",
+    "Options": "设置",
+    "Select port": "选择端口",
+    "Temporarily block device after consecutive failures": "连续失败后临时阻止设备",
+    "Update unchanged states": "更新未更改的状态",
+    "customPortSelect": "自定义端口（见下文）",
+    "serialBaudRate": "串口波特率",
+    "serialPort": "串行端口",
+    "wMBus Mode": "总线模式",
+    "wMBus Receiver": "wMBus 接收器"
+}

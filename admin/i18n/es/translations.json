@@ -1,0 +1,19 @@
+{
+    "AES key": "Clave AES",
+    "AES keys": "Claves AES",
+    "Blocked Devices": "Dispositivos bloqueados",
+    "Cache for compact frames support": "Caché para compatibilidad con marcos compactos",
+    "Custom serial port": "Puerto serie personalizado",
+    "Device address": "Dirección del dispositivo",
+    "Force energy units to kWh": "Forzar unidades de energía a kWh",
+    "ID": "IDENTIFICACIÓN",
+    "Options": "Configuraciones",
+    "Select port": "Seleccionar puerto",
+    "Temporarily block device after consecutive failures": "Bloquear temporalmente el dispositivo después de fallas consecutivas",
+    "Update unchanged states": "Actualizar estados sin cambios",
+    "customPortSelect": "Puerto personalizado (ver más abajo)",
+    "serialBaudRate": "Velocidad en baudios en serie",
+    "serialPort": "Puerto serial",
+    "wMBus Mode": "Modo wMBus",
+    "wMBus Receiver": "Receptor wMBus"
+}
