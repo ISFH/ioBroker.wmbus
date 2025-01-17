@@ -28,6 +28,17 @@
             "T": "T Mode"
         }
     },
+    "imstv2": {
+        "name": "IMST iU891A-XL",
+        "js": "ImstV2Receiver.js",
+        "modes": {
+            "S": "S Mode",
+            "T": "T Mode",
+            "C/T": "combined C/T-Mode",
+            "C": "C-Mode (100 kbps)",
+            "Tx": "Enhanced T Mode"
+        }
+    },
     "cul": {
         "name": "CUL",
         "js": "CulReceiver.js",

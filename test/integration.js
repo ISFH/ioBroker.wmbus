@@ -82,7 +82,7 @@ tests.integration(path.join(__dirname, '..'), {
     allowedExitCodes: [11],
 
     defineAdditionalTests({ suite }) {
-        const testedReceiver = ['Amber', 'Cul', 'Ebi', 'Imst', 'Simple'][Math.floor(Math.random() * 5)];
+        const testedReceiver = ['Amber', 'Cul', 'Ebi', 'Imst', 'ImstV2', 'Simple'][Math.floor(Math.random() * 6)];
 
         suite('Test receiver with mocks', (getHarness) => {
             it(`Test ${testedReceiver}`, () => {
@@ -151,7 +151,7 @@ tests.integration(path.join(__dirname, '..'), {
                     await new Promise(r => setTimeout(r, 2000));
 
                     harness.sendTo('wireless-mbus.0', 'listReceiver', null, (receivers) => {
-                        expect(receivers).to.have.all.keys('ebi', 'amber', 'imst', 'cul', 'simple');
+                        expect(receivers).to.have.all.keys('ebi', 'amber', 'imst', 'imstv2', 'cul', 'simple');
                         resolve(true);
                     });
                 });
