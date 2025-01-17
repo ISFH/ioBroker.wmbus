@@ -1,6 +1,6 @@
 {
   "name": "iobroker.wireless-mbus",
-  "version": "0.9.4",
+  "version": "0.10.0",
   "description": "Receive data from Wireless Meter-Bus (wM-Bus) devices like gas or electricity meters",
   "author": {
     "name": "Christian Landvogt",

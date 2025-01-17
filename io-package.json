@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "wireless-mbus",
-    "version": "0.9.4",
+    "version": "0.10.0",
     "news": {
+      "0.10.0": {
+        "en": "Add support for  IMST iU891A-XL receiver",
+        "de": "Unterstützung für den IMST iU891A-XL Empfänger",
+        "ru": "Добавлена ​​поддержка приемника IMST iU891A-XL.",
+        "pt": "Adicionar suporte para receptor IMST iU891A-XL",
+        "nl": "Ondersteuning toegevoegd voor IMST iU891A-XL-ontvanger",
+        "fr": "Ajout de la prise en charge du récepteur IMST iU891A-XL",
+        "it": "Aggiunto il supporto per il ricevitore IMST iU891A-XL",
+        "es": "Agregue soporte para el receptor IMST iU891A-XL",
+        "pl": "Dodaj obsługę odbiornika IMST iU891A-XL",
+        "uk": "Додайте підтримку приймача IMST iU891A-XL",
+        "zh-cn": "添加对 IMST iU891A-XL 接收器的支持"
+      },
       "0.9.4": {
         "en": "Upgrade dependencies; some fixes to quiet the adapter checker bot",
         "de": "Upgrade der Abhängigkeiten; einige Anpassungen um den Adapter Checker Bot ruhigzustellen",
