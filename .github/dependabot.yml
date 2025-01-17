@@ -1,12 +1,13 @@
 version: 2
 updates:
-- package-ecosystem: npm
-  directory: "/"
-  schedule:
-    interval: monthly
-    time: "04:00"
-    timezone: Europe/Berlin
-  open-pull-requests-limit: 20
-  assignees:
-  - lvogt
-  versioning-strategy: increase
+  - package-ecosystem: "npm" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "monthly"
+    assignees:
+      - lvogt
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
